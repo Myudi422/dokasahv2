@@ -28,7 +28,7 @@ export default function FormPage() {
     const fetchForm = async () => {
       try {
         setIsLoadingForm(true);
-        const res = await fetch(`http://localhost:3001/api/forms/${slug}`, {
+        const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms/${slug}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 

@@ -19,7 +19,7 @@ export default function CreateFormModal() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:3001/api/forms', {
+      const response = await fetch('https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

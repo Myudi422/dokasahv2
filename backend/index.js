@@ -9,7 +9,7 @@ const PORT = 3001;
 
 // Middleware
 app.use(cors({
-  origin: "http://localhost:3000", // Izinkan hanya frontend
+  origin: "https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev", // Izinkan hanya frontend
   methods: ["GET", "POST", "PUT", "DELETE"], // Metode HTTP yang diizinkan
   allowedHeaders: ["Content-Type", "Authorization"], // Header yang diizinkan
 }));
@@ -117,7 +117,7 @@ app.post('/api/forms', authenticateToken, async (req, res) => {
   
       res.status(201).json({
         message: 'Form created successfully',
-        link: `http://localhost:3000/form/${slug}`
+        link: `https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev/form/${slug}`
       });
     } catch (err) {
       console.error(err);

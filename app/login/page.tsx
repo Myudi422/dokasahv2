@@ -7,6 +7,7 @@ import { signInWithPopup, auth, provider } from "../public/firebase.config";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation"; // Import useSearchParams
 import { useAuth } from "@/components/AuthContext";
+import { MessageCircle } from "lucide-react";
 
 export default function LoginPage() {
   const [error, setError] = useState("");
@@ -19,7 +20,7 @@ export default function LoginPage() {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          const response = await fetch("http://localhost:3001/api/protected", {
+          const response = await fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/protected/api/protected", {
             headers: { Authorization: `Bearer ${token}` },
           });
           
@@ -43,7 +44,7 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      const response = await fetch("http://localhost:3001/api/auth", {
+      const response = await fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,13 +73,14 @@ router.push(redirectUrl);
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
+      {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl">
             <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-foreground flex items-center justify-center text-white">
-              L
+              D
             </div>
-            Legalitas
+            Dokasah
           </div>
           <nav className="hidden md:flex gap-6">
             <Link href="/" className="text-sm font-medium hover:text-primary">
@@ -90,10 +92,22 @@ router.push(redirectUrl);
             <Link href="/tentang-kami" className="text-sm font-medium hover:text-primary">
               Tentang Kami
             </Link>
-            <Link href="/#kontak" className="text-sm font-medium hover:text-primary">
-              Kontak
-            </Link>
           </nav>
+          <div className="flex items-center gap-2">
+          <Link href="/login">
+              <Button variant="outline">Login</Button>
+            </Link>
+            <Button
+  onClick={() =>
+    window.open(
+      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
+    )
+  }
+  className="group"
+>
+  <MessageCircle className="h-4 w-4" /> {/* Ikon Telepon */}
+</Button>
+          </div>
         </div>
       </header>
 

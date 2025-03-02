@@ -39,7 +39,7 @@ export default function DashboardPage() {
     if (!token) {
       router.push("/login")
     } else {
-      fetch("http://localhost:3001/api/protected", {
+      fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/protected", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       })

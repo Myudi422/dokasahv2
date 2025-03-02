@@ -31,7 +31,7 @@ export default function LandingPage() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
-          <Link href="/login">
+          <Link href="/dashboard">
               <Button variant="outline">Login</Button>
             </Link>
             <Button
