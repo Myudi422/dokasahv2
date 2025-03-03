@@ -65,9 +65,25 @@ setFormConfig(loadedConfig);
     fetchForm();
   }, [slug, token]);
 
-  const handleFileChange = (name, file) => {
-    setFiles({ ...files, [name]: file });
-    setFormData({ ...formData, [name]: file.name });
+  const handleFileChange = async (name, file) => {
+    try {
+      // Upload file dan dapatkan URL
+      const fileUrl = await uploadFileToB2(file); // Implementasi upload menggunakan FileUpload component
+      
+      // Update form data dengan URL file
+      setFormData(prev => ({
+        ...prev,
+        [name]: fileUrl
+      }));
+      
+      // Update files state jika diperlukan
+      setFiles(prev => ({
+        ...prev,
+        [name]: fileUrl
+      }));
+    } catch (error) {
+      console.error('File upload error:', error);
+    }
   };
 
   // Fungsi simpan draft
@@ -128,7 +144,18 @@ const handleSubmit = async (e) => {
   e.preventDefault();
 
   try {
-    const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms/${slug}/submit`, {
+    // Pastikan semua file sudah terupload
+    const uploadPromises = Object.entries(files).map(([name, file]) => {
+      if (file instanceof File) {
+        return handleFileChange(name, file);
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(uploadPromises);
+
+    // Lanjutkan submit form dengan data yang sudah termasuk URL file
+    const res = await fetch(`/api/forms/${slug}/submit`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -228,7 +255,8 @@ if (!user || !isAuthLoaded || isLoadingForm) {
             <label className="block mb-1 text-sm sm:text-base font-medium">
               {field.label} {field.required && <span className="text-red-500">*</span>}
             </label>
-  
+
+            {/* Tambahkan case untuk semua tipe field */}
             {field.type === 'text' && (
               <Input
                 type="text"
@@ -238,7 +266,7 @@ if (!user || !isAuthLoaded || isLoadingForm) {
                 className="w-full"
               />
             )}
-  
+
             {field.type === 'textarea' && (
               <Textarea
                 value={formData[field.name] || ''}
@@ -247,7 +275,7 @@ if (!user || !isAuthLoaded || isLoadingForm) {
                 className="w-full"
               />
             )}
-  
+
             {field.type === 'select' && (
               <Select onValueChange={(value) => setFormData({ ...formData, [field.name]: value })}>
                 <SelectTrigger className="w-full">
@@ -261,6 +289,42 @@ if (!user || !isAuthLoaded || isLoadingForm) {
                   ))}
                 </SelectContent>
               </Select>
+            )}
+
+            {field.type === 'number' && (
+              <Input
+                type="number"
+                value={formData[field.name] || ''}
+                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                required={field.required}
+                className="w-full"
+                min={0}
+              />
+            )}
+
+            {field.type === 'date' && (
+              <Input
+                type="date"
+                value={formData[field.name] || ''}
+                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                required={field.required}
+                className="w-full"
+              />
+            )}
+
+            {field.type === 'file' && (
+              <div className="space-y-2">
+                <FileUpload
+                  accept={field.accept}
+                  onFileSelect={(file) => handleFileChange(field.name, file)}
+                  className="w-full"
+                />
+                {formData[field.name] && (
+                  <p className="text-sm text-muted-foreground">
+                    File terpilih: {formData[field.name]}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         ))}

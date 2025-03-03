@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
+const fileRoutes = require('./routes/files');
 const jwt = require("jsonwebtoken"); // Tambahkan library jsonwebtoken
 
 const app = express();
@@ -22,6 +23,9 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 });
+
+
+app.use('/api/files', fileRoutes);
 
 // Secret key untuk JWT (simpan di .env)
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
