@@ -100,68 +100,74 @@ app.get("/api/protected", authenticateToken, (req, res) => {
   res.status(200).json({ message: "Ini adalah data terlindungi.", user: req.user });
 });
 
-// Create new form configuration (Admin only)
 app.post('/api/forms', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Forbidden' });
+  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+
+  const { email, formType } = req.body; // Tidak perlu formStructure
+  const slug = generateUniqueSlug();
+
+  try {
+    // Cek apakah form type valid
+    const [formTypeCheck] = await pool.execute(
+      'SELECT * FROM form_structures WHERE form_type = ?',
+      [formType]
+    );
+    
+    if (formTypeCheck.length === 0) {
+      return res.status(400).json({ message: 'Jenis formulir tidak valid' });
     }
+
+    // Insert ke form_configurations tanpa form_structure
+    const [result] = await pool.execute(
+      'INSERT INTO form_configurations (form_type, assigned_email, slug) VALUES (?, ?, ?)',
+      [formType, email, slug]
+    );
+
+    res.status(201).json({
+      message: 'Form created successfully',
+      link: `https://example.com/form/${slug}`
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal membuat form' });
+  }
+});
+
   
-    const { email, formType } = req.body;
-    const slug = generateUniqueSlug(); // Implement a slug generation function
-  
-    try {
-      const [result] = await pool.execute(
-        'INSERT INTO form_configurations (form_type, assigned_email, slug) VALUES (?, ?, ?)',
-        [formType, email, slug]
-      );
-  
-      res.status(201).json({
-        message: 'Form created successfully',
-        link: `https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev/form/${slug}`
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Failed to create form' });
-    }
-  });
-  
-// Get form data dan validasi akses
 app.get('/api/forms/:slug', authenticateToken, async (req, res) => {
-    try {
-      const [forms] = await pool.execute(
-        'SELECT * FROM form_configurations WHERE slug = ?',
-        [req.params.slug]
-      );
-  
-      if (forms.length === 0) {
-        return res.status(404).json({ message: 'Form tidak ditemukan' });
-      }
-  
-      const form = forms[0];
-      
-      // Validasi email pengguna
-      if (form.assigned_email !== req.user.email) {
-        return res.status(403).json({ message: 'Form tidak untuk Anda' });
-      }
-      
-      // Ambil submission jika ada
-      const [submissions] = await pool.execute(
-        'SELECT * FROM form_submissions WHERE form_config_id = ? AND user_id = ?',
-        [form.id, req.user.id]
-      );
-  
-      res.status(200).json({
-        form: {
-          type: form.form_type,
-          slug: form.slug
-        },
-        submission: submissions[0] || null
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  });
+  try {
+    // Join dengan form_structures untuk ambil struktur
+    const [forms] = await pool.execute(
+      `SELECT fc.*, fs.form_structure 
+       FROM form_configurations fc
+       JOIN form_structures fs ON fc.form_type = fs.form_type
+       WHERE slug = ?`,
+      [req.params.slug]
+    );
+
+    if (forms.length === 0) return res.status(404).json({ message: 'Form tidak ditemukan' });
+
+    const form = forms[0];
+    if (form.assigned_email !== req.user.email) return res.status(403).json({ message: 'Akses ditolak' });
+
+    // Ambil submission
+    const [submissions] = await pool.execute(
+      'SELECT * FROM form_submissions WHERE form_config_id = ? AND user_id = ?',
+      [form.id, req.user.id]
+    );
+
+    res.json({
+      form: {
+        ...form,
+        form_structure: form.form_structure // Ambil dari join
+      },
+      submission: submissions[0] || null
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
   
   
   // Save draft
@@ -261,6 +267,52 @@ app.get('/api/forms/:slug', authenticateToken, async (req, res) => {
       res.status(500).json({ message: 'Failed to submit form' });
     }
   });
+
+  // PUT: Update submission status
+app.put('/api/forms/:slug/status', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { status } = req.body;
+
+    // Dapatkan form configuration
+    const [forms] = await pool.execute(
+      'SELECT * FROM form_configurations WHERE slug = ?',
+      [slug]
+    );
+    
+    if (forms.length === 0) {
+      return res.status(404).json({ message: 'Form tidak ditemukan' });
+    }
+
+    const form = forms[0];
+    
+    // Validasi kepemilikan form
+    if (form.assigned_email !== req.user.email) {
+      return res.status(403).json({ message: 'Akses ditolak' });
+    }
+
+    // Dapatkan submission yang ada
+    const [submissions] = await pool.execute(
+      'SELECT * FROM form_submissions WHERE form_config_id = ? AND user_id = ?',
+      [form.id, req.user.id]
+    );
+
+    if (submissions.length === 0) {
+      return res.status(404).json({ message: 'Submission tidak ditemukan' });
+    }
+
+    // Update status submission
+    await pool.execute(
+      'UPDATE form_submissions SET status = ?, updated_at = NOW() WHERE id = ?',
+      [status, submissions[0].id]
+    );
+
+    res.status(200).json({ message: 'Status berhasil diupdate' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Gagal mengupdate status' });
+  }
+});
 
 // Jalankan server
 app.listen(PORT, () => {
