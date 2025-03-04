@@ -12,7 +12,7 @@ const PORT = 3001;
 
 // Middleware
 app.use(cors({
-  origin: "https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev",
+  origin: "http://localhost:3000",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
