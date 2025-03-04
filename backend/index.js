@@ -2,19 +2,48 @@ require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
-const fileRoutes = require('./routes/files');
-const jwt = require("jsonwebtoken"); // Tambahkan library jsonwebtoken
+const jwt = require("jsonwebtoken");
+const multer  = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const PORT = 3001;
 
 // Middleware
 app.use(cors({
-  origin: "https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev", // Izinkan hanya frontend
-  methods: ["GET", "POST", "PUT", "DELETE"], // Metode HTTP yang diizinkan
-  allowedHeaders: ["Content-Type", "Authorization"], // Header yang diizinkan
+  origin: "https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(express.json());
+
+// Setup untuk menyimpan file upload
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    const uploadDir = path.join(__dirname, 'uploads');
+    fs.mkdirSync(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: function(req, file, cb) {
+    // Ambil slug dan field name dari req.body (pastikan dikirim dari frontend)
+    const formSlug = req.body.slug;
+    const fieldName = req.body.fieldName || file.fieldname;
+    // Dapatkan ekstensi file
+    const ext = path.extname(file.originalname);
+    // Optional: format field name (misal: ubah spasi jadi underscore dan lowercase)
+    const formattedFieldName = fieldName.toLowerCase().replace(/\s+/g, '_');
+    // Gabungkan field name dan slug
+    const newFilename = `${formattedFieldName}_${formSlug}${ext}`;
+    cb(null, newFilename);
+  }
+});
+
+
+const upload = multer({ storage });
+
+// Serve folder uploads sebagai static
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Koneksi ke database
 const pool = mysql.createPool({
@@ -24,45 +53,38 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
 });
 
+// Secret key untuk JWT
+const JWT_SECRET = process.env.JWT_SECRET
 
-app.use('/api/files', fileRoutes);
-
-// Secret key untuk JWT (simpan di .env)
-const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
-
-// Tambahkan di backend
+// Fungsi untuk menghasilkan slug unik
 function generateUniqueSlug() {
-    return Math.random().toString(36).substring(2, 15) + 
-           Math.random().toString(36).substring(2, 15);
-  }
+  return Math.random().toString(36).substring(2, 15) + 
+         Math.random().toString(36).substring(2, 15);
+}
 
 // Fungsi untuk menghasilkan token JWT
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role, name: user.name }, // Payload
-    JWT_SECRET, // Secret key
-    { expiresIn: "1h" } // Token valid selama 1 jam
+    { id: user.id, email: user.email, role: user.role, name: user.name, profile_pictures: user.profile_pictures },
+    JWT_SECRET,
+    { expiresIn: "1h" }
   );
 }
 
-// API untuk menyimpan data pengguna dan menghasilkan token
 app.post("/api/auth", async (req, res) => {
   const { name, email } = req.body;
-
   try {
-    // Cek apakah pengguna sudah ada
     const [rows] = await pool.execute("SELECT * FROM users_legal WHERE email = ?", [email]);
-
     let user;
     if (rows.length > 0) {
-      // Jika pengguna sudah ada, update data
+      // Update data pengguna jika sudah ada
       await pool.execute(
         "UPDATE users_legal SET name = ?, updated_at = NOW() WHERE email = ?",
         [name, email]
       );
       user = rows[0];
     } else {
-      // Jika pengguna belum ada, tambahkan data baru
+      // Insert data pengguna baru
       const [result] = await pool.execute(
         "INSERT INTO users_legal (name, email, role, created_at, updated_at) VALUES (?, ?, 'user', NOW(), NOW())",
         [name, email]
@@ -70,10 +92,16 @@ app.post("/api/auth", async (req, res) => {
       user = { id: result.insertId, name, email, role: "user" };
     }
 
-    // Generate JWT token
-    const token = generateToken(user);
+    // Jika ada gambar profil dari Google, simpan ke database
+    if (req.body.profile_picture) {
+      await pool.execute(
+        "UPDATE users_legal SET profile_pictures = ? WHERE email = ?",
+        [req.body.profile_picture, email]
+      );
+      user.profile_pictures = req.body.profile_picture;
+    }
 
-    // Kirim token ke frontend
+    const token = generateToken(user);
     res.status(200).json({ message: "Login berhasil.", token });
   } catch (err) {
     console.error(err);
@@ -81,7 +109,7 @@ app.post("/api/auth", async (req, res) => {
   }
 });
 
-// Middleware untuk memverifikasi token
+// Middleware untuk verifikasi token
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -94,10 +122,22 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(403).json({ message: "Token tidak valid atau telah kedaluwarsa." });
     }
-    req.user = user; // Simpan data pengguna dari token
+    req.user = user;
     next();
   });
 }
+
+// Endpoint untuk upload file
+app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Tidak ada file yang diupload' });
+  }
+  // Kembalikan path file yang dapat diakses secara publik
+  const filePath = `/uploads/${req.file.filename}`;
+  res.status(200).json({ message: 'File berhasil diupload', filePath });
+});
+
+
 
 // Contoh API yang dilindungi oleh token
 app.get("/api/protected", authenticateToken, (req, res) => {
@@ -129,7 +169,7 @@ app.post('/api/forms', authenticateToken, async (req, res) => {
 
     res.status(201).json({
       message: 'Form created successfully',
-      link: `https://example.com/form/${slug}`
+      link: `https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev/form/${slug}`
     });
   } catch (err) {
     console.error(err);

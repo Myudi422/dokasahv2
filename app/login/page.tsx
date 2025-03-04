@@ -43,22 +43,26 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
+  
+      // Ambil data gambar profil dari akun Google
+      const profilePicture = user.photoURL || null;
+  
       const response = await fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: user.displayName,
           email: user.email,
+          profile_picture: profilePicture, // Kirim data gambar profil
         }),
       });
-
+  
       if (response.ok) {
         const data = await response.json();
         setToken(data.token); // Gunakan setToken dari context
         const searchParams = new URLSearchParams(window.location.search);
-const redirectUrl = searchParams.get("redirect") || "/dashboard";
-router.push(redirectUrl);
+        const redirectUrl = searchParams.get("redirect") || "/dashboard";
+        router.push(redirectUrl);
       } else {
         setError("Gagal menyimpan data pengguna.");
       }
@@ -68,7 +72,6 @@ router.push(redirectUrl);
       setIsLoading(false);
     }
   };
-  
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -73,58 +73,45 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 border-r bg-card">
-        <div className="p-4 flex items-center gap-2 border-b">
-          <span className="font-bold text-lg">Dokasah</span>
-        </div>
-        <div className="p-4">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input type="search" placeholder="Search..." className="w-full pl-8 bg-background" />
-          </div>
-        </div>
-        <nav className="flex-1 p-2 space-y-1 overflow-auto">
-          <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-          <NavItem href="/cases" icon={FileText} label="Cases" badge="12" active={pathname === "/cases"} />
-          <NavItem href="/documents" icon={Folder} label="Documents" active={pathname === "/documents"} />
-          <NavItem href="/calendar" icon={Calendar} label="Calendar" active={pathname === "/calendar"} />
-          <NavItem href="/clients" icon={Users} label="Clients" active={pathname === "/clients"} />
-          <NavItem href="/messages" icon={MessageSquare} label="Messages" badge="5" active={pathname === "/messages"} />
-          <NavItem href="/analytics" icon={BarChart3} label="Analytics" active={pathname === "/analytics"} />
-          <NavItem href="/settings" icon={Settings} label="Settings" active={pathname === "/settings"} />
-        </nav>
-        <div className="p-4 border-t mt-auto">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarImage src="/placeholder-user.jpg" alt="User" />
-              <AvatarFallback>JD</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">john.doe@example.com</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">User menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </aside>
+      <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r bg-card overflow-y-auto">
+  <div className="p-4 flex items-center gap-2 border-b">
+    <span className="font-bold text-lg">Dokasah</span>
+  </div>
+  <nav className="flex-1 p-2 space-y-1">
+    <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
+    <NavItem href="/cases" icon={FileText} label="Formulir Order" active={pathname === "/cases"} />
+    <NavItem href="/documents" icon={Folder} label="File Manager" active={pathname === "/documents"} />
+  </nav>
+  <div className="p-4 border-t mt-auto">
+    <div className="flex items-center gap-3">
+      <Avatar>
+        <AvatarImage src={user?.profile_pictures} alt="User" />
+        <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{user?.name}</p>
+        <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+            <span className="sr-only">User menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Log out</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  </div>
+</aside>
+
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
@@ -140,63 +127,45 @@ export default function DashboardPage() {
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0">
         <div className="p-4 flex items-center gap-2 border-b">
-          <Gavel className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg">Dokasah Legal</span>
+          <span className="font-bold text-lg">Dokasah</span>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-          <NavItem href="/cases" icon={FileText} label="Cases" badge="12" active={pathname === "/cases"} />
-          <NavItem href="/documents" icon={Folder} label="Documents" active={pathname === "/documents"} />
-          <NavItem href="/calendar" icon={Calendar} label="Calendar" active={pathname === "/calendar"} />
-          <NavItem href="/clients" icon={Users} label="Clients" active={pathname === "/clients"} />
-          <NavItem href="/messages" icon={MessageSquare} label="Messages" badge="5" active={pathname === "/messages"} />
-          <NavItem href="/analytics" icon={BarChart3} label="Analytics" active={pathname === "/analytics"} />
-          <NavItem href="/settings" icon={Settings} label="Settings" active={pathname === "/settings"} />
+          <NavItem href="/cases" icon={FileText} label="Formulir Order" active={pathname === "/cases"} />
+          <NavItem href="/documents" icon={Folder} label="File Manager" active={pathname === "/documents"} />
         </nav>
       </SheetContent>
     </Sheet>
   </div>
 
   {/* Konten Header Utama */}
-  <div className="flex items-center justify-between w-full">
-    {/* Search Bar */}
-    <form className="hidden md:block flex-1 md:flex-initial">
-      <div className="relative">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search cases, documents..."
-          className="pl-8 md:w-[200px] lg:w-[300px]"
-        />
-      </div>
-    </form>
+  {/* Konten Header Utama */}
+<div className="flex items-center justify-end w-full">
+  {/* Notifikasi dan Profil Picture */}
+  <div className="flex items-center gap-4">
+    {/* Profil Picture */}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.profile_pictures || "/placeholder-user.jpg"} alt="User" />
+            <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuSeparator />
 
-    {/* Notifikasi dan Profil Picture */}
-    <div className="flex items-center gap-4">
-
-      {/* Profil Picture */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="/placeholder-user.jpg" alt="User" />
-              <AvatarFallback>JD</AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   </div>
+</div>
 </header>
 
         {/* Main Content */}
@@ -263,11 +232,11 @@ export default function DashboardPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Case Number</TableHead>
-                          <TableHead>Client</TableHead>
-                          <TableHead className="hidden md:table-cell">Type</TableHead>
+                          <TableHead>Tanggal</TableHead>
+                          <TableHead>Email Client</TableHead>
+                          <TableHead className="hidden md:table-cell">Tipe</TableHead>
                           <TableHead className="hidden md:table-cell">Status</TableHead>
-                          <TableHead className="hidden md:table-cell">Deadline</TableHead>
+                          <TableHead className="hidden md:table-cell">Update terbaru</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -307,138 +276,7 @@ export default function DashboardPage() {
                   </CardFooter>
                 </Card>
               </TabsContent>
-              
-              <TabsContent value="documents" className="space-y-4">
-                <Card>
-                  <CardHeader className="px-6">
-                    <CardTitle>Recent Documents</CardTitle>
-                    <CardDescription>You have 42 documents</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Document Name</TableHead>
-                          <TableHead className="hidden md:table-cell">Case</TableHead>
-                          <TableHead className="hidden md:table-cell">Type</TableHead>
-                          <TableHead className="hidden md:table-cell">Date Modified</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recentDocuments.map((doc) => (
-                          <TableRow key={doc.id}>
-                            <TableCell className="font-medium">{doc.name}</TableCell>
-                            <TableCell className="hidden md:table-cell">{doc.case}</TableCell>
-                            <TableCell className="hidden md:table-cell">{doc.type}</TableCell>
-                            <TableCell className="hidden md:table-cell">{doc.modified}</TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                    <span className="sr-only">Actions</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>View document</DropdownMenuItem>
-                                  <DropdownMenuItem>Download</DropdownMenuItem>
-                                  <DropdownMenuItem>Share</DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                  <CardFooter className="flex justify-between border-t p-4">
-                    <Button variant="outline">Previous</Button>
-                    <Button variant="outline">Next</Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="activities" className="space-y-4">
-                <Card>
-                  <CardHeader className="px-6">
-                    <CardTitle>Recent Activities</CardTitle>
-                    <CardDescription>Your recent actions and updates</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {activities.map((activity, index) => (
-                        <div key={index} className="flex items-start gap-4">
-                          <div className="mt-1 rounded-full bg-primary/10 p-2">
-                            {activity.icon}
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <p className="text-sm font-medium">{activity.title}</p>
-                            <p className="text-sm text-muted-foreground">{activity.description}</p>
-                            <p className="text-xs text-muted-foreground">{activity.time}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
-
-            {/* Bottom Section */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {/* Upcoming Deadlines */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upcoming Deadlines</CardTitle>
-                  <CardDescription>Your next 5 deadlines</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {upcomingDeadlines.map((deadline, index) => (
-                      <div key={index} className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <Clock className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">{deadline.title}</p>
-                          <p className="text-xs text-muted-foreground">Case: {deadline.case}</p>
-                        </div>
-                        <div className="text-sm font-medium">
-                          <Badge variant={getDeadlineVariant(deadline.daysLeft)}>
-                            {deadline.daysLeft === 0 ? "Today" : `${deadline.daysLeft} days`}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Case Progress */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Case Progress</CardTitle>
-                  <CardDescription>Your active cases progress</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {caseProgress.map((caseItem, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <p className="text-sm font-medium">{caseItem.title}</p>
-                            <p className="text-xs text-muted-foreground">{caseItem.client}</p>
-                          </div>
-                          <div className="text-sm font-medium">{caseItem.progress}%</div>
-                        </div>
-                        <Progress value={caseItem.progress} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </main>
       </div>
