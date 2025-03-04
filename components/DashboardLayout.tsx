@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Sertakan current pathname sebagai redirect
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     } else {
-      fetch("http://localhost:3001/api/protected", {
+      fetch("https://lv.adewahyudin.com/api/protected", {
         method: "GET",
         headers: { Authorization: `Bearer ${storedToken}` },
       })

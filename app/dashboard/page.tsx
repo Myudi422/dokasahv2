@@ -39,7 +39,7 @@ export default function DashboardPage() {
     if (!token) {
       router.push("/login")
     } else {
-      fetch("http://localhost:3001/api/protected", {
+      fetch("https://lv.adewahyudin.com/api/protected", {
         method: "GET",
         headers: { Authorization: `Bearer ${token}` },
       })

@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (token) {
-      fetch('http://localhost:3001/api/protected', {
+      fetch('https://lv.adewahyudin.com/api/protected', {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.json())
