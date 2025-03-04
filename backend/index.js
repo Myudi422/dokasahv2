@@ -12,7 +12,7 @@ const PORT = 3001;
 
 // Middleware
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: "https://lv.adewahyudin.com",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
