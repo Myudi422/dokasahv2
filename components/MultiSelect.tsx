@@ -24,6 +24,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   const selectedOptions = options.filter(option => value.includes(option.value));
 
   return (
+    <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto' }}>
     <Select
       isMulti
       options={options}
@@ -32,6 +33,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
       placeholder={placeholder || "Cari dan pilih opsi"}
       isDisabled={disabled} // meneruskan nilai disable ke react-select
     />
+    </div>
   );
 };
 

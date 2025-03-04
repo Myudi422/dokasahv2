@@ -76,43 +76,47 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Header */}
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xl">
-            <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-foreground flex items-center justify-center text-white">
-              D
-            </div>
-            Dokasah
-          </div>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/" className="text-sm font-medium hover:text-primary">
-              Beranda
-            </Link>
-            <Link href="/layanan" className="text-sm font-medium hover:text-primary">
-              Layanan
-            </Link>
-            <Link href="/tentang-kami" className="text-sm font-medium hover:text-primary">
-              Tentang Kami
-            </Link>
-          </nav>
-          <div className="flex items-center gap-2">
-          <Link href="/login">
-              <Button variant="outline">Login</Button>
-            </Link>
-            <Button
-  onClick={() =>
-    window.open(
-      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
-    )
-  }
-  className="group"
->
-  <MessageCircle className="h-4 w-4" /> {/* Ikon Telepon */}
-</Button>
-          </div>
-        </div>
-      </header>
+<header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
+  <div className="container flex h-16 items-center justify-between">
+    {/* Logo dan Teks "Dokasah" */}
+    <Link href="/" className="flex items-center gap-2 font-bold text-xl">
+      <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-foreground flex items-center justify-center text-white">
+        D
+      </div>
+      Dokasah
+    </Link>
+
+    {/* Navigasi */}
+    <nav className="hidden md:flex gap-6">
+      <Link href="/" className="text-sm font-medium hover:text-primary">
+        Beranda
+      </Link>
+      <Link href="/layanan" className="text-sm font-medium hover:text-primary">
+        Layanan
+      </Link>
+      <Link href="/tentang-kami" className="text-sm font-medium hover:text-primary">
+        Tentang Kami
+      </Link>
+    </nav>
+
+    {/* Tombol Login dan WhatsApp */}
+    <div className="flex items-center gap-2">
+      <Link href="/login">
+        <Button variant="outline">Login</Button>
+      </Link>
+      <Button
+        onClick={() =>
+          window.open(
+            "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
+          )
+        }
+        className="group"
+      >
+        <MessageCircle className="h-4 w-4" /> {/* Ikon Telepon */}
+      </Button>
+    </div>
+  </div>
+</header>
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">

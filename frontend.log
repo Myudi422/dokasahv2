@@ -1,0 +1,62 @@
+$ next dev --turbopack --port "3000"
+   ▲ Next.js 15.2.0 (Turbopack)
+   - Local:        http://localhost:3000
+   - Network:      http://174.138.25.56:3000
+   - Experiments (use with caution):
+     ✓ webpackBuildWorker
+     ✓ parallelServerCompiles
+     ✓ parallelServerBuildTraces
+
+ ✓ Starting...
+ ✓ Ready in 1483ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 9.2s
+ GET /login 200 in 9969ms
+ ○ Compiling /_not-found/page ...
+ ✓ Compiled /_not-found/page in 1383ms
+ GET /_next/webpack-hmr 404 in 1477ms
+ GET /login 200 in 133ms
+ GET /_next/webpack-hmr 404 in 84ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 3.7s
+ GET /dashboard 200 in 3797ms
+ ○ Compiling /form/[slug] ...
+ ✓ Compiled /form/[slug] in 3.9s
+ GET /form/lidr0rf0whb25brgid31o 200 in 4807ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.3s
+ GET / 200 in 2730ms
+ GET / 200 in 294ms
+ GET /_next/webpack-hmr 404 in 75ms
+ ○ Compiling /layanan ...
+ ✓ Compiled /layanan in 2.3s
+ GET /layanan 200 in 2332ms
+ GET /dashboard 200 in 55ms
+ GET /login 200 in 78ms
+ GET /login 200 in 79ms
+ GET /login 200 in 86ms
+ GET /_next/webpack-hmr 404 in 76ms
+ GET /dashboard 200 in 41ms
+ GET /login 200 in 54ms
+ GET /login 200 in 66ms
+ GET /login 200 in 103ms
+ GET /_next/webpack-hmr 404 in 77ms
+ GET /login 200 in 82ms
+ GET /_next/webpack-hmr 404 in 89ms
+ GET /dashboard 200 in 44ms
+ GET /form/bxoefnd3dql62d1g42rk0s 200 in 100ms
+ GET /dashboard 200 in 197ms
+ GET /_next/webpack-hmr 404 in 83ms
+ GET /form/3ktuzrzohikn1alptep5d 200 in 81ms
+ GET /form/3ktuzrzohikn1alptep5d 200 in 344ms
+ GET /_next/webpack-hmr 404 in 86ms
+ GET /form/3ktuzrzohikn1alptep5d 200 in 165ms
+ GET /_next/webpack-hmr 404 in 87ms
+ GET /login 200 in 38ms
+ GET /login?redirect=%2Fform%2F3ktuzrzohikn1alptep5d 200 in 36ms
+ GET /login?redirect=%2Fform%2F3ktuzrzohikn1alptep5d 200 in 53ms
+ GET /dashboard 200 in 78ms
+ GET /login 200 in 41ms
+ GET /_next/webpack-hmr 404 in 66ms
+ GET / 200 in 335ms
+ GET /_next/webpack-hmr 404 in 51ms

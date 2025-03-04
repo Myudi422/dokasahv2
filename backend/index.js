@@ -12,7 +12,7 @@ const PORT = 3001;
 
 // Middleware
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: "https://adewahyudin.com",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
@@ -319,6 +319,54 @@ app.get('/api/forms/:slug', authenticateToken, async (req, res) => {
       res.status(500).json({ message: 'Failed to submit form' });
     }
   });
+
+
+// Endpoint untuk mengambil data form beserta status dan updated_at
+app.get('/api/dashboard/forms', authenticateToken, async (req, res) => {
+  try {
+    let query, params;
+    // Jika admin, tampilkan semua formulir
+    if (req.user.role === 'admin') {
+      query = `
+        SELECT 
+          fc.id, 
+          fc.form_type, 
+          fc.assigned_email, 
+          fc.slug, 
+          fs.status, 
+          fs.updated_at 
+        FROM form_configurations fc
+        LEFT JOIN form_submissions fs ON fc.id = fs.form_config_id
+        ORDER BY fs.updated_at DESC
+      `;
+      params = [];
+    } else {
+      // Jika bukan admin, tampilkan formulir berdasarkan email user
+      query = `
+        SELECT 
+          fc.id, 
+          fc.form_type, 
+          fc.assigned_email, 
+          fc.slug, 
+          fs.status, 
+          fs.updated_at 
+        FROM form_configurations fc
+        LEFT JOIN form_submissions fs ON fc.id = fs.form_config_id
+        WHERE fc.assigned_email = ?
+        ORDER BY fs.updated_at DESC
+      `;
+      params = [req.user.email];
+    }
+    
+    const [rows] = await pool.execute(query, params);
+    res.status(200).json({ forms: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 
   // PUT: Update submission status
 app.put('/api/forms/:slug/status', authenticateToken, async (req, res) => {

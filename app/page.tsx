@@ -351,7 +351,7 @@ export default function LandingPage() {
                 <div className="space-y-2">
                   <Badge className="bg-primary/10 text-primary border-primary/20">Tentang Kami</Badge>
                   <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                    Berpengalaman Dalam Bidang Dokasah Perusahaan
+                    Berpengalaman Dalam Bidang Legalitas Perusahaan
                   </h2>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl/relaxed">
                     Kami adalah tim profesional yang berpengalaman dalam bidang legalitas perusahaan. Kami telah
@@ -763,7 +763,7 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Konsultasi Dokasah
+                    Konsultasi Legalitas
                   </Link>
                 </li>
               </ul>
@@ -850,7 +850,7 @@ export default function LandingPage() {
                     <rect width="20" height="16" x="2" y="4" rx="2" />
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                   </svg>
-                  <span>info@dokasah.com</span>
+                  <span>cs@dokasah.com</span>
                 </li>
               </ul>
             </div>
