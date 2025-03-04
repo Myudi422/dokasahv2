@@ -112,10 +112,9 @@ const uploadFile = async (fieldName, file) => {
     // Pastikan respons bertipe JSON
     if (contentType.includes("application/json")) {
       const data = await res.json();
-      const backendUrl = "https://lv.adewahyudin.com";
-      const fileUrl = `${backendUrl}${data.filePath}`;
-      return fileUrl;
-    } else {
+      return data.fileUrl;
+    }
+     else {
       const text = await res.text();
       throw new Error(`Respons tidak valid JSON: ${text}`);
     }

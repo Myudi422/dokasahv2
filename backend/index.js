@@ -6,11 +6,12 @@ const jwt = require("jsonwebtoken");
 const multer  = require("multer");
 const path = require("path");
 const fs = require("fs");
+const AWS = require("aws-sdk");
 
 const app = express();
 const PORT = 3001;
 
-// Middleware
+// Middleware CORS dan JSON parser
 app.use(cors({
   origin: "https://adewahyudin.com",
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -18,32 +19,19 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Setup untuk menyimpan file upload
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    const uploadDir = path.join(__dirname, 'uploads');
-    fs.mkdirSync(uploadDir, { recursive: true });
-    cb(null, uploadDir);
-  },
-  filename: function(req, file, cb) {
-    // Ambil slug dan field name dari req.body (pastikan dikirim dari frontend)
-    const formSlug = req.body.slug;
-    const fieldName = req.body.fieldName || file.fieldname;
-    // Dapatkan ekstensi file
-    const ext = path.extname(file.originalname);
-    // Optional: format field name (misal: ubah spasi jadi underscore dan lowercase)
-    const formattedFieldName = fieldName.toLowerCase().replace(/\s+/g, '_');
-    // Gabungkan field name dan slug
-    const newFilename = `${formattedFieldName}_${formSlug}${ext}`;
-    cb(null, newFilename);
-  }
+// Konfigurasi AWS SDK untuk Backblaze B2
+const s3 = new AWS.S3({
+  endpoint: process.env.B2_ENDPOINT || "https://s3.us-east-005.backblazeb2.com",
+  accessKeyId: process.env.B2_ACCESS_KEY,
+  secretAccessKey: process.env.B2_SECRET_KEY,
+  region: process.env.B2_REGION || "us-east-005",
+  signatureVersion: "v4",
+  s3ForcePathStyle: true,
 });
+const BUCKET_NAME = process.env.B2_BUCKET || "ccgnimex";
 
-
-const upload = multer({ storage });
-
-// Serve folder uploads sebagai static
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Gunakan multer dengan memoryStorage agar file langsung diupload ke B2
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Koneksi ke database
 const pool = mysql.createPool({
@@ -54,7 +42,7 @@ const pool = mysql.createPool({
 });
 
 // Secret key untuk JWT
-const JWT_SECRET = process.env.JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
 const domain = process.env.DOMAIN;
 
 // Fungsi untuk menghasilkan slug unik
@@ -72,20 +60,19 @@ function generateToken(user) {
   );
 }
 
+// Endpoint Auth
 app.post("/api/auth", async (req, res) => {
   const { name, email } = req.body;
   try {
     const [rows] = await pool.execute("SELECT * FROM users_legal WHERE email = ?", [email]);
     let user;
     if (rows.length > 0) {
-      // Update data pengguna jika sudah ada
       await pool.execute(
         "UPDATE users_legal SET name = ?, updated_at = NOW() WHERE email = ?",
         [name, email]
       );
       user = rows[0];
     } else {
-      // Insert data pengguna baru
       const [result] = await pool.execute(
         "INSERT INTO users_legal (name, email, role, created_at, updated_at) VALUES (?, ?, 'user', NOW(), NOW())",
         [name, email]
@@ -93,7 +80,6 @@ app.post("/api/auth", async (req, res) => {
       user = { id: result.insertId, name, email, role: "user" };
     }
 
-    // Jika ada gambar profil dari Google, simpan ke database
     if (req.body.profile_picture) {
       await pool.execute(
         "UPDATE users_legal SET profile_pictures = ? WHERE email = ?",
@@ -128,15 +114,39 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// Endpoint untuk upload file
-app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
+app.post('/api/upload', authenticateToken, upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'Tidak ada file yang diupload' });
   }
-  // Kembalikan path file yang dapat diakses secara publik
-  const filePath = `/uploads/${req.file.filename}`;
-  res.status(200).json({ message: 'File berhasil diupload', filePath });
+  
+  const file = req.file;
+  const { slug, fieldName } = req.body; // Ambil slug dan fieldName dari request body
+
+  if (!slug || !fieldName) {
+    return res.status(400).json({ message: 'Slug dan fieldName harus disediakan' });
+  }
+
+  // Dapatkan ekstensi file (contoh: .jpg, .png)
+  const extension = path.extname(file.originalname);
+  // Buat path file sesuai format: dokasah/berkas/{slug}/{fieldName}{extension}
+  const filePath = `dokasah/berkas/${slug}/${fieldName}${extension}`;
+
+  try {
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+
+    const uploadResult = await s3.upload(params).promise();
+    res.status(200).json({ message: 'File berhasil diupload', fileUrl: uploadResult.Location });
+  } catch (err) {
+    console.error('Error uploading file to B2', err);
+    res.status(500).json({ message: 'Error uploading file to B2' });
+  }
 });
+
 
 
 
@@ -182,6 +192,47 @@ app.post('/api/forms', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Gagal membuat form' });
+  }
+});
+
+// **1. Endpoint untuk mendapatkan daftar file**
+app.get('/files/*', async (req, res) => {
+  try {
+      const folderPath = req.params[0]; // Tangkap seluruh path setelah /files/
+      const prefix = folderPath.endsWith('/') ? folderPath : folderPath + '/'; // Pastikan ada '/' di akhir
+      const CDN_URL = "https://file.ccgnimex.my.id/file/ccgnimex/"; // URL CDN
+
+      const data = await s3.listObjectsV2({
+          Bucket: BUCKET_NAME,
+          Prefix: prefix
+      }).promise();
+
+      if (!data.Contents) return res.json({ files: [], folders: [] });
+
+      const folders = new Set();
+      const files = [];
+
+      data.Contents.forEach(file => {
+          const relativePath = file.Key.replace(prefix, ''); // Hapus prefix dari path
+          const parts = relativePath.split('/');
+
+          if (parts.length > 1) {
+              folders.add(parts[0]); // Deteksi subfolder
+          } else {
+              files.push({
+                  key: file.Key,
+                  lastModified: file.LastModified,
+                  size: file.Size,
+                  storageClass: file.StorageClass,
+                  url: `${CDN_URL}${file.Key}` // Tambahkan custom URL CDN
+              });
+          }
+      });
+
+      res.json({ files, folders: [...folders] });
+  } catch (err) {
+      console.error('Error fetching folder contents', err);
+      res.status(500).send('Error fetching folder contents');
   }
 });
 
