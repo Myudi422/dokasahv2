@@ -20,7 +20,7 @@ export default function LoginPage() {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          const response = await fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/protected/api/protected", {
+          const response = await fetch("http//localhost:3001/api/protected/api/protected", {
             headers: { Authorization: `Bearer ${token}` },
           });
           
@@ -47,7 +47,7 @@ export default function LoginPage() {
       // Ambil data gambar profil dari akun Google
       const profilePicture = user.photoURL || null;
   
-      const response = await fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/auth", {
+      const response = await fetch("http://localhost:3001/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

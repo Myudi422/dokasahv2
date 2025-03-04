@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       // Sertakan current pathname sebagai redirect
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
     } else {
-      fetch("https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/protected", {
+      fetch("http://localhost:3001/api/protected", {
         method: "GET",
         headers: { Authorization: `Bearer ${storedToken}` },
       })

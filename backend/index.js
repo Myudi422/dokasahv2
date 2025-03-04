@@ -55,6 +55,7 @@ const pool = mysql.createPool({
 
 // Secret key untuk JWT
 const JWT_SECRET = process.env.JWT_SECRET
+const domain = process.env.DOMAIN;
 
 // Fungsi untuk menghasilkan slug unik
 function generateUniqueSlug() {
@@ -167,10 +168,17 @@ app.post('/api/forms', authenticateToken, async (req, res) => {
       [formType, email, slug]
     );
 
-    res.status(201).json({
-      message: 'Form created successfully',
-      link: `https://improved-lamp-vq6j9gjvjpxfp6jx-3000.app.github.dev/form/${slug}`
-    });
+    // Akses DOMAIN dari .env
+  const domain = process.env.DOMAIN;
+
+  // Buat link dengan menggabungkan DOMAIN dan slug
+  const link = `https://${domain}/form/${slug}`;
+
+  // Kirim respons dengan status 201 dan link
+  res.status(201).json({
+    message: "Form created successfully",
+    link: link,
+  });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Gagal membuat form' });

@@ -33,7 +33,7 @@ export default function FormPage() {
     const fetchForm = async () => {
       try {
         setIsLoadingForm(true);
-        const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms/${slug}`, {
+        const res = await fetch(`http://localhost:3001/api/forms/${slug}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -86,7 +86,7 @@ const uploadFile = async (fieldName, file) => {
   formPayload.append('file', file);
 
   try {
-    const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/upload`, {
+    const res = await fetch(`http://localhost:3001/api/upload`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`
@@ -112,7 +112,7 @@ const uploadFile = async (fieldName, file) => {
     // Pastikan respons bertipe JSON
     if (contentType.includes("application/json")) {
       const data = await res.json();
-      const backendUrl = "https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev";
+      const backendUrl = "http://localhost:3001";
       const fileUrl = `${backendUrl}${data.filePath}`;
       return fileUrl;
     } else {
@@ -139,7 +139,7 @@ const handleFileChange = async (name, file) => {
   const saveDraft = async () => {
     try {
       setIsSavingDraft(true);
-      const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms/${slug}/draft`, {
+      const res = await fetch(`http://localhost:3001/api/forms/${slug}/draft`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -167,7 +167,7 @@ const handleFileChange = async (name, file) => {
 
   const handleEdit = async () => {
     try {
-      const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms/${slug}/status`, {
+      const res = await fetch(`http://localhost:3001/api/forms/${slug}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ const handleFileChange = async (name, file) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`https://improved-lamp-vq6j9gjvjpxfp6jx-3001.app.github.dev/api/forms/${slug}/submit`, {
+      const res = await fetch(`http://localhost:3001/api/forms/${slug}/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
