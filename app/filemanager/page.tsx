@@ -79,7 +79,7 @@ export default function FileManagerPage() {
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
   // Fungsi untuk mengambil data folder dari API dengan endpoint yang sudah disesuaikan
-  const fetchFolderData = async (path: string, query?: string) => {
+const fetchFolderData = async (path: string, query?: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -91,7 +91,11 @@ export default function FileManagerPage() {
       if (query) {
         url += `?q=${encodeURIComponent(query)}`;
       }
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (!res.ok) throw new Error("Gagal mengambil data folder");
       const json = await res.json();
       setData(json);
@@ -101,6 +105,19 @@ export default function FileManagerPage() {
       setLoading(false);
     }
   };
+
+
+    if (!isAuthLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
 
   // Panggil fetchFolderData hanya setelah folderPath sudah diketahui
   useEffect(() => {
