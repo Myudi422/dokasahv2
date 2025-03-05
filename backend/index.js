@@ -148,6 +148,40 @@ app.post('/api/upload', authenticateToken, upload.single('file'), async (req, re
 });
 
 
+app.post('/api/upload-file', authenticateToken, upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Tidak ada file yang diupload' });
+  }
+  
+  const file = req.file;
+  const { slug, fieldName } = req.body; // Ambil slug dan fieldName dari request body
+
+  if (!slug || !fieldName) {
+    return res.status(400).json({ message: 'Slug dan fieldName harus disediakan' });
+  }
+
+  // Dapatkan ekstensi file (contoh: .jpg, .png)
+  const extension = path.extname(file.originalname);
+  // Buat path file sesuai format: dokasah/berkas/{slug}/{fieldName}{extension}
+  const filePath = `dokasah/${slug}/${fieldName}${extension}`;
+
+  try {
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+
+    const uploadResult = await s3.upload(params).promise();
+    res.status(200).json({ message: 'File berhasil diupload', fileUrl: uploadResult.Location });
+  } catch (err) {
+    console.error('Error uploading file to B2', err);
+    res.status(500).json({ message: 'Error uploading file to B2' });
+  }
+});
+
+
 
 
 // Contoh API yang dilindungi oleh token
@@ -195,46 +229,79 @@ app.post('/api/forms', authenticateToken, async (req, res) => {
   }
 });
 
-// **1. Endpoint untuk mendapatkan daftar file**
 app.get('/files/*', async (req, res) => {
   try {
-      const folderPath = req.params[0]; // Tangkap seluruh path setelah /files/
+      res.setHeader('Content-Type', 'application/json');
+
+      const folderPath = req.params[0]; // Tangkap path setelah /files/
       const prefix = folderPath.endsWith('/') ? folderPath : folderPath + '/'; // Pastikan ada '/' di akhir
       const CDN_URL = "https://file.ccgnimex.my.id/file/ccgnimex/"; // URL CDN
 
+      // **1. Fetch dari S3 terlebih dahulu**
       const data = await s3.listObjectsV2({
           Bucket: BUCKET_NAME,
           Prefix: prefix
       }).promise();
 
-      if (!data.Contents) return res.json({ files: [], folders: [] });
+      if (!data.Contents || data.Contents.length === 0) {
+          return res.json({ files: [], folders: [] });
+      }
 
-      const folders = new Set();
+      const folders = new Map(); // Menggunakan Map untuk menyimpan slug dan nama
       const files = [];
+      const detectedSlugs = new Set();
 
+      // **2. Identifikasi slug yang perlu dicari di database**
       data.Contents.forEach(file => {
-          const relativePath = file.Key.replace(prefix, ''); // Hapus prefix dari path
+          const relativePath = file.Key.replace(prefix, '');
           const parts = relativePath.split('/');
 
           if (parts.length > 1) {
-              folders.add(parts[0]); // Deteksi subfolder
+              detectedSlugs.add(parts[0]); // Simpan slug yang ditemukan
+              folders.set(parts[0], { slug: parts[0], name: parts[0] }); // Default slug = name
+          }
+      });
+
+      // **3. Query database untuk slug yang ditemukan**
+      if (detectedSlugs.size > 0) {
+          const placeholders = Array.from(detectedSlugs).map(() => '?').join(',');
+          const query = `SELECT slug, nama_folder FROM form_folder WHERE slug IN (${placeholders})`;
+          const [rows] = await pool.execute(query, Array.from(detectedSlugs));
+
+          rows.forEach(row => {
+              if (folders.has(row.slug)) {
+                  folders.set(row.slug, { slug: row.slug, name: row.nama_folder });
+              }
+          });
+      }
+
+      // **4. Proses ulang hasil dari S3**
+      data.Contents.forEach(file => {
+          let relativePath = file.Key.replace(prefix, '');
+          let parts = relativePath.split('/');
+
+          if (parts.length > 1) {
+              folders.set(parts[0], folders.get(parts[0])); // Pastikan folder ada di Map
           } else {
               files.push({
-                  key: file.Key,
+                  key: relativePath,
                   lastModified: file.LastModified,
                   size: file.Size,
                   storageClass: file.StorageClass,
-                  url: `${CDN_URL}${file.Key}` // Tambahkan custom URL CDN
+                  url: `${CDN_URL}${file.Key}`
               });
           }
       });
 
-      res.json({ files, folders: [...folders] });
+      res.json({ files, folders: Array.from(folders.values()) });
+
   } catch (err) {
-      console.error('Error fetching folder contents', err);
-      res.status(500).send('Error fetching folder contents');
+      console.error('Error fetching folder contents:', err);
+      res.status(500).json({ error: 'Error fetching folder contents' });
   }
 });
+
+
 
   
 app.get('/api/forms/:slug', authenticateToken, async (req, res) => {

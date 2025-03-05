@@ -228,8 +228,7 @@ const handleChangeStatus = async (slug, newStatus) => {
         </div>
         <nav className="flex-1 p-2 space-y-1">
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-          <NavItem href="/cases" icon={FileText} label="Formulir Order" active={pathname === "/cases"} />
-          <NavItem href="/documents" icon={Folder} label="File Manager" active={pathname === "/documents"} />
+          <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
         </nav>
         <div className="p-4 border-t mt-auto">
           <div className="flex items-center gap-3">
@@ -279,8 +278,7 @@ const handleChangeStatus = async (slug, newStatus) => {
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
                   <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-                  <NavItem href="/cases" icon={FileText} label="Formulir Order" active={pathname === "/cases"} />
-                  <NavItem href="/documents" icon={Folder} label="File Manager" active={pathname === "/documents"} />
+                  <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
                 </nav>
               </SheetContent>
             </Sheet>
