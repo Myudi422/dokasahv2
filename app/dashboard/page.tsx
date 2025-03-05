@@ -13,7 +13,9 @@ import {
   MoreHorizontal,
   FileArchive,
   LoaderIcon,
-  Users
+  Users,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react'
 import CreateFormModal from "@/components/CreateFormModal"
 
@@ -41,9 +43,34 @@ export default function DashboardPage() {
   const [recentCases, setRecentCases] = React.useState([]);
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 7;
+  
+  // State untuk sorting
+  const [sortConfig, setSortConfig] = React.useState({ key: '', direction: 'ascending' });
 
   // Redirect ke halaman login bila token tidak ada
   useAuthRedirect();
+
+  const handleChangeStatus = async (slug, newStatus) => {
+    try {
+      const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        // Refresh data formulir setelah update status
+        fetchForms();
+      } else {
+        console.error('Gagal mengupdate status');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  
 
   // Fungsi untuk fetch data formulir
   const fetchForms = React.useCallback(async () => {
@@ -55,7 +82,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        // Transformasi data agar sesuai dengan sample
+        // Transformasi data agar sesuai dengan sample dan menambahkan properti updatedAt untuk sorting
         const transformedData = data.forms.map((item) => ({
           id: item.id,
           number: `F-${item.id.toString().padStart(4, '0')}`, // misalnya F-0001
@@ -63,6 +90,7 @@ export default function DashboardPage() {
           type: item.form_type,
           status: item.status || 'Not Submitted',
           deadline: item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A',
+          updatedAt: item.updated_at ? new Date(item.updated_at) : null,
           slug: item.slug
         }));
         setRecentCases(transformedData);
@@ -91,6 +119,26 @@ export default function DashboardPage() {
     }
   }, [pathname, token, fetchForms]);
 
+  // Mengurutkan data berdasarkan sortConfig menggunakan useMemo
+  const sortedCases = React.useMemo(() => {
+    let sortableItems = [...recentCases];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        // Tangani nilai null (misalnya pada tanggal)
+        if (aValue === null) return 1;
+        if (bValue === null) return -1;
+
+        if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [recentCases, sortConfig]);
+
   if (!isAuthLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -107,9 +155,9 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  // Pagination: hitung data yang akan ditampilkan
-  const totalPages = Math.ceil(recentCases.length / itemsPerPage);
-  const paginatedCases = recentCases.slice(
+  // Pagination: hitung data yang akan ditampilkan dari data yang sudah diurutkan
+  const totalPages = Math.ceil(sortedCases.length / itemsPerPage);
+  const paginatedCases = sortedCases.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -125,6 +173,16 @@ export default function DashboardPage() {
   // Fungsi untuk navigasi ke halaman detail form berdasarkan slug
   const handleViewDetail = (slug) => {
     router.push(`/form/${slug}`);
+  };
+
+  // Fungsi handleSort untuk mengubah state sortConfig
+  const handleSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+    setCurrentPage(1);
   };
 
   return (
@@ -233,6 +291,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Overview Cards */}
+            {user?.role === 'admin' && 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 title="Formulir Pending"
@@ -259,6 +318,7 @@ export default function DashboardPage() {
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
               />
             </div>
+            }
 
             {/* Tabs Section */}
             <Tabs defaultValue="cases" className="space-y-4">
@@ -277,11 +337,21 @@ export default function DashboardPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Id</TableHead>
-                          <TableHead>Email Client</TableHead>
-                          <TableHead className="hidden md:table-cell">Tipe</TableHead>
-                          <TableHead className="hidden md:table-cell">Status</TableHead>
-                          <TableHead className="hidden md:table-cell">Update terbaru</TableHead>
+                          <TableHead onClick={() => handleSort('id')} className="cursor-pointer select-none">
+                            Id {sortConfig.key === 'id' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('client')} className="cursor-pointer select-none">
+                            Email Client {sortConfig.key === 'client' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('type')} className="hidden md:table-cell cursor-pointer select-none">
+                            Tipe {sortConfig.key === 'type' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('status')} className="hidden md:table-cell cursor-pointer select-none">
+                            Status {sortConfig.key === 'status' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('updatedAt')} className="hidden md:table-cell cursor-pointer select-none">
+                            Update terbaru {sortConfig.key === 'updatedAt' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -301,20 +371,35 @@ export default function DashboardPage() {
                               </TableCell>
                               <TableCell className="hidden md:table-cell">{caseItem.deadline}</TableCell>
                               <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                      <span className="sr-only">Actions</span>
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleViewDetail(caseItem.slug)}>
-                                      Lihat Detail
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>Tambahkan Dokumen</DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                              <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="ghost" size="icon">
+      <MoreHorizontal className="h-4 w-4" />
+      <span className="sr-only">aksi</span>
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end">
+    <DropdownMenuItem onClick={() => handleViewDetail(caseItem.slug)}>
+      Lihat Detail
+    </DropdownMenuItem>
+    <DropdownMenuItem>Tambahkan Dokumen</DropdownMenuItem>
+    {/* Opsi status untuk admin */}
+    {user?.role === 'admin' && (
+      <>
+        <DropdownMenuSeparator />
+        {["draft", "submitted", "proses", "review", "selesai"].map((s) => {
+          if (s === caseItem.status.toLowerCase()) return null;
+          return (
+            <DropdownMenuItem key={s} onClick={() => handleChangeStatus(caseItem.slug, s)}>
+              Ganti ke {s.charAt(0).toUpperCase() + s.slice(1)}
+            </DropdownMenuItem>
+          );
+        })}
+      </>
+    )}
+  </DropdownMenuContent>
+</DropdownMenu>
+
                               </TableCell>
                             </TableRow>
                           ))
@@ -368,15 +453,17 @@ function StatCard({ title, value, description, icon }) {
 }
 
 function getStatusVariant(status) {
-  switch (status) {
-    case "Active":
-      return "default";
-    case "Pending":
-      return "warning";
-    case "Closed":
-      return "secondary";
-    case "Urgent":
-      return "destructive";
+  switch (status.toLowerCase()) {
+    case "draft":
+      return "draft";
+    case "submitted":
+      return "submitted";
+    case "proses":
+      return "proses";
+    case "review":
+      return "review";
+    case "selesai":
+      return "selesai";
     default:
       return "outline";
   }

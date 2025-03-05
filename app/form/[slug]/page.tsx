@@ -27,6 +27,10 @@ export default function FormPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [isFirstSubmit, setIsFirstSubmit] = useState(true);
 
+  // Variabel untuk menentukan apakah formulir dapat diedit.
+  // Form dapat diedit hanya jika status adalah 'draft', null, atau 'submitted'.
+  const isEditable = submissionStatus === 'draft' || submissionStatus === 'submitted' || submissionStatus === null;
+
   useEffect(() => {
     if (!slug || !token) return;
 
@@ -77,63 +81,57 @@ export default function FormPage() {
     fetchForm();
   }, [slug, token]);
 
-// Fungsi untuk upload file ke backend
-const uploadFile = async (fieldName, file) => {
-  const formPayload = new FormData();
-  // Pastikan variabel 'slug' sudah tersedia di scope ini
-  formPayload.append('slug', slug);
-  formPayload.append('fieldName', fieldName);
-  formPayload.append('file', file);
+  // Fungsi untuk upload file ke backend
+  const uploadFile = async (fieldName, file) => {
+    const formPayload = new FormData();
+    formPayload.append('slug', slug);
+    formPayload.append('fieldName', fieldName);
+    formPayload.append('file', file);
 
-  try {
-    const res = await fetch(`https://lv.adewahyudin.com/api/upload`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`
-      },
-      body: formPayload,
-    });
+    try {
+      const res = await fetch(`https://lv.adewahyudin.com/api/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formPayload,
+      });
 
-    const contentType = res.headers.get("content-type") || "";
-    
-    // Jika respons tidak OK, ambil pesan error dari respons (JSON atau text)
-    if (!res.ok) {
-      let errorMessage = 'Gagal mengupload file';
-      if (contentType.includes("application/json")) {
-        const errorData = await res.json();
-        errorMessage = errorData.message || errorMessage;
-      } else {
-        const errorText = await res.text();
-        errorMessage = errorText || errorMessage;
+      const contentType = res.headers.get("content-type") || "";
+      
+      if (!res.ok) {
+        let errorMessage = 'Gagal mengupload file';
+        if (contentType.includes("application/json")) {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } else {
+          const errorText = await res.text();
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    // Pastikan respons bertipe JSON
-    if (contentType.includes("application/json")) {
-      const data = await res.json();
-      return data.fileUrl;
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        return data.fileUrl;
+      } else {
+        const text = await res.text();
+        throw new Error(`Respons tidak valid JSON: ${text}`);
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      throw error;
     }
-     else {
-      const text = await res.text();
-      throw new Error(`Respons tidak valid JSON: ${text}`);
+  };
+
+  const handleFileChange = async (name, file) => {
+    try {
+      const filePath = await uploadFile(name, file);
+      setFormData(prev => ({ ...prev, [name]: filePath }));
+    } catch (error) {
+      console.error('Error saat upload file:', error);
     }
-  } catch (error) {
-    console.error("Upload error:", error);
-    throw error;
-  }
-};
-
-
-const handleFileChange = async (name, file) => {
-  try {
-    // Pastikan mengirim field name (contoh: "Foto ktp") dan file dengan urutan yang benar
-    const filePath = await uploadFile(name, file);
-    setFormData(prev => ({ ...prev, [name]: filePath }));
-  } catch (error) {
-    console.error('Error saat upload file:', error);
-  }
-};
+  };
 
   const saveDraft = async () => {
     try {
@@ -222,7 +220,7 @@ const handleFileChange = async (name, file) => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-sm text-red-500">{errorMessage}</p>
-        <Button onClick={() => router.push("/")}>Beranda</Button>
+        <Button onClick={() => router.push("/dashboard")}>Kembali</Button>
       </div>
     );
   }
@@ -243,7 +241,7 @@ const handleFileChange = async (name, file) => {
       <Card>
         <CardContent className="flex items-center justify-between p-4">
           <h1 className="text-xl sm:text-2xl font-bold">{formConfig.title}</h1>
-          {submissionStatus === 'submitted' && !isEditing && (
+          {submissionStatus === 'submitted' && !isEditing && isEditable && (
             <button
               type="button"
               onClick={handleEdit}
@@ -258,6 +256,13 @@ const handleFileChange = async (name, file) => {
         </CardContent>
       </Card>
 
+      {/* Jika formulir tidak dapat diedit, tampilkan widget keterangan */}
+      {!isEditable && (
+        <div className="p-4 bg-yellow-100 text-yellow-800 rounded-md">
+          Formulir tidak bisa diubah, karena sudah dalam proses pengerjaan oleh tim kami
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {formConfig.fields.map((field) => (
           <div key={field.name}>
@@ -271,7 +276,7 @@ const handleFileChange = async (name, file) => {
                 onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                 required={field.required}
                 className="w-full"
-                disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disabled
+                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
               />
             )}
             {field.type === 'textarea' && (
@@ -280,37 +285,37 @@ const handleFileChange = async (name, file) => {
                 onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                 required={field.required}
                 className="w-full"
-                disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disabled
+                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
               />
             )}
             {field.type === 'select' && (
               <Select 
                 onValueChange={(value) => setFormData({ ...formData, [field.name]: value })}
-                disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disabled
+                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder={`Pilih ${field.label}`} />
                 </SelectTrigger>
-    <SelectContent>
-    {field.options?.map((option, index) => {
-  const optionValue = typeof option === 'string' ? option : option.value;
-  const optionLabel = typeof option === 'string' ? option : option.label;
-  return (
-    <SelectItem key={`${optionValue}-${index}`} value={optionValue}>
-      {optionLabel}
-    </SelectItem>
-  );
-})}
-    </SelectContent>
-  </Select>
-)}
+                <SelectContent>
+                  {field.options?.map((option, index) => {
+                    const optionValue = typeof option === 'string' ? option : option.value;
+                    const optionLabel = typeof option === 'string' ? option : option.label;
+                    return (
+                      <SelectItem key={`${optionValue}-${index}`} value={optionValue}>
+                        {optionLabel}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            )}
             {field.type === 'multi-select' && (
               <MultiSelect
                 options={field.options || []}
                 placeholder={`Cari dan pilih ${field.label}`}
                 value={formData[field.name] || []}
                 onChange={(selectedValues) => setFormData({ ...formData, [field.name]: selectedValues })}
-                disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disabled
+                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
               />
             )}
             {field.type === 'number' && (
@@ -321,7 +326,7 @@ const handleFileChange = async (name, file) => {
                 required={field.required}
                 className="w-full"
                 min={0}
-                disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disabled
+                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
               />
             )}
             {field.type === 'date' && (
@@ -331,7 +336,7 @@ const handleFileChange = async (name, file) => {
                 onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                 required={field.required}
                 className="w-full"
-                disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disabled
+                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
               />
             )}
             {field.type === 'file' && (
@@ -340,7 +345,7 @@ const handleFileChange = async (name, file) => {
                   accept={field.accept}
                   onFileSelect={(file) => handleFileChange(field.name, file)}
                   className="w-full"
-                  disabled={submissionStatus === 'submitted' && !isEditing} // Tambahkan disable
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
                 />
                 {formData[field.name] && (
                   <div className="mt-2">
@@ -352,37 +357,40 @@ const handleFileChange = async (name, file) => {
           </div>
         ))}
 
-        <div className="flex flex-col sm:flex-row justify-end gap-4">
-          {submissionStatus === 'submitted' && isEditing ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsEditing(false);
-                setSubmissionStatus('submitted');
-              }}
-              className="w-full sm:w-auto"
-            >
-              Batal Edit
-            </Button>
-          ) : submissionStatus === 'draft' ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              className="w-full sm:w-auto"
-            >
-              Batal
-            </Button>
-          ) : null}
+        {/* Hanya tampilkan tombol submit/edit jika formulir dapat diedit */}
+        {isEditable && (
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
+            {submissionStatus === 'submitted' && isEditing ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditing(false);
+                  setSubmissionStatus('submitted');
+                }}
+                className="w-full sm:w-auto"
+              >
+                Batal Edit
+              </Button>
+            ) : submissionStatus === 'draft' ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                className="w-full sm:w-auto"
+              >
+                Batal
+              </Button>
+            ) : null}
 
-          <Button type="submit" disabled={submissionStatus === 'submitted' && !isEditing} className="w-full sm:w-auto">
-            {isSavingDraft && (
-              <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-            )}
-            {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
-          </Button>
-        </div>
+            <Button type="submit" disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)} className="w-full sm:w-auto">
+              {isSavingDraft && (
+                <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+              )}
+              {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
+            </Button>
+          </div>
+        )}
       </form>
 
       <Dialog open={showPopup} onOpenChange={setShowPopup}>

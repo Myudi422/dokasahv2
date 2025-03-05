@@ -75,6 +75,11 @@ DB_PASSWORD=aaaaaaac
 JWT_SECRET=dokasah
 DB_NAME=ccgnimex
 DOMAIN=$DOMAIN
+B2_ENDPOINT=https://s3.us-east-005.backblazeb2.com
+B2_ACCESS_KEY=0057ba6d7a5725c0000000002
+B2_SECRET_KEY=K005XvUqydtIZQvuNBYCM/UDhXfrWLQ
+B2_REGION=us-east-005
+B2_BUCKET=ccgnimex
 EOF
 
 run_command "npm install"

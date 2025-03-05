@@ -251,7 +251,10 @@ app.get('/api/forms/:slug', authenticateToken, async (req, res) => {
     if (forms.length === 0) return res.status(404).json({ message: 'Form tidak ditemukan' });
 
     const form = forms[0];
-    if (form.assigned_email !== req.user.email) return res.status(403).json({ message: 'Akses ditolak' });
+    // Izinkan akses jika user adalah pemilik atau admin
+    if (form.assigned_email !== req.user.email && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Akses ditolak' });
+    }
 
     // Ambil submission
     const [submissions] = await pool.execute(
@@ -271,6 +274,7 @@ app.get('/api/forms/:slug', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
   
   
   // Save draft
@@ -420,6 +424,7 @@ app.get('/api/dashboard/forms', authenticateToken, async (req, res) => {
 
 
   // PUT: Update submission status
+// PUT: Update submission status
 app.put('/api/forms/:slug/status', authenticateToken, async (req, res) => {
   try {
     const { slug } = req.params;
@@ -436,27 +441,35 @@ app.put('/api/forms/:slug/status', authenticateToken, async (req, res) => {
     }
 
     const form = forms[0];
-    
-    // Validasi kepemilikan form
-    if (form.assigned_email !== req.user.email) {
+
+    // Validasi: jika bukan admin, pastikan email user cocok
+    if (req.user.role !== 'admin' && form.assigned_email !== req.user.email) {
       return res.status(403).json({ message: 'Akses ditolak' });
     }
 
-    // Dapatkan submission yang ada
-    const [submissions] = await pool.execute(
-      'SELECT * FROM form_submissions WHERE form_config_id = ? AND user_id = ?',
-      [form.id, req.user.id]
-    );
-
-    if (submissions.length === 0) {
-      return res.status(404).json({ message: 'Submission tidak ditemukan' });
+    if (req.user.role === 'admin') {
+      // Untuk admin: update seluruh submission yang terkait dengan form ini
+      const [result] = await pool.execute(
+        'UPDATE form_submissions SET status = ?, updated_at = NOW() WHERE form_config_id = ?',
+        [status, form.id]
+      );
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Submission tidak ditemukan' });
+      }
+    } else {
+      // Untuk user biasa: update submission milik user
+      const [submissions] = await pool.execute(
+        'SELECT * FROM form_submissions WHERE form_config_id = ? AND user_id = ?',
+        [form.id, req.user.id]
+      );
+      if (submissions.length === 0) {
+        return res.status(404).json({ message: 'Submission tidak ditemukan' });
+      }
+      await pool.execute(
+        'UPDATE form_submissions SET status = ?, updated_at = NOW() WHERE id = ?',
+        [status, submissions[0].id]
+      );
     }
-
-    // Update status submission
-    await pool.execute(
-      'UPDATE form_submissions SET status = ?, updated_at = NOW() WHERE id = ?',
-      [status, submissions[0].id]
-    );
 
     res.status(200).json({ message: 'Status berhasil diupdate' });
   } catch (err) {
@@ -464,6 +477,7 @@ app.put('/api/forms/:slug/status', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Gagal mengupdate status' });
   }
 });
+
 
 // Jalankan server
 app.listen(PORT, () => {

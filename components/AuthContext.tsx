@@ -10,6 +10,15 @@ interface AuthContextType {
   isAuthLoaded: boolean;
 }
 
+// Tambahkan fungsi untuk mendekode JWT
+function parseJwt(token: string) {
+  try {f
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch (e) {
+    return null;
+  }
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -27,10 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Ambil token dari localStorage setelah mount
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
-      _setToken(storedToken);
+      const decodedToken = parseJwt(storedToken);
+      if (decodedToken?.exp && decodedToken.exp * 1000 < Date.now()) {
+        // Token kadaluarsa, hapus dari localStorage
+        localStorage.removeItem('token');
+        _setToken(null);
+      } else {
+        _setToken(storedToken);
+      }
     }
     setIsAuthLoaded(true);
   }, []);
@@ -40,9 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetch('https://lv.adewahyudin.com/api/protected', {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            if (res.status === 403 || res.status === 401) {
+              throw new Error('Unauthorized');
+            }
+          }
+          return res.json();
+        })
         .then(data => setUser(data.user))
         .catch(() => {
+          // Hapus token jika terjadi error 403/401
           setToken(null);
         });
     }
@@ -71,7 +94,7 @@ export function useAuthRedirect() {
 
   useEffect(() => {
     if (isAuthLoaded && !token) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
     }
   }, [isAuthLoaded, token, router, pathname]);
 }
