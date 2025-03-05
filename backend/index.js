@@ -275,6 +275,34 @@ app.get('/api/forms/:slug', authenticateToken, async (req, res) => {
   }
 });
 
+
+// Endpoint untuk mendapatkan count status formulir di dashboard
+app.get('/api/dashboard/status-count', authenticateToken, async (req, res) => {
+  try {
+    // Hanya admin yang boleh mengakses endpoint ini. Jika perlu, sesuaikan sesuai kebijakan.
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Akses ditolak' });
+    }
+    
+    const [rows] = await pool.execute(`
+      SELECT 
+        SUM(CASE WHEN fs.status IS NULL OR fs.status = 'draft' THEN 1 ELSE 0 END) AS pending,
+        SUM(CASE WHEN fs.status = 'submitted' THEN 1 ELSE 0 END) AS selesai,
+        SUM(CASE WHEN fs.status = 'proses' THEN 1 ELSE 0 END) AS proses,
+        SUM(CASE WHEN fs.status = 'review' THEN 1 ELSE 0 END) AS review
+      FROM form_configurations fc
+      LEFT JOIN form_submissions fs ON fc.id = fs.form_config_id
+    `);
+    
+    // rows[0] berisi objek dengan properti pending, selesai, proses, dan review
+    res.status(200).json({ counts: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
   
   
   // Save draft

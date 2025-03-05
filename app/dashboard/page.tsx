@@ -47,29 +47,63 @@ export default function DashboardPage() {
   // State untuk sorting
   const [sortConfig, setSortConfig] = React.useState({ key: '', direction: 'ascending' });
 
+  const [statusCounts, setStatusCounts] = React.useState({
+    pending: 0,
+    selesai: 0,
+    proses: 0,
+    review: 0,
+  });
+  
+  // Buat fungsi fetchStatusCounts dengan useCallback agar bisa dipanggil ulang
+const fetchStatusCounts = React.useCallback(async () => {
+  if (!token) return;
+  try {
+    const response = await fetch("https://lv.adewahyudin.com/api/dashboard/status-count", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Gagal mengambil data status");
+    }
+    const data = await response.json();
+    setStatusCounts(data.counts);
+  } catch (error) {
+    console.error("Error:", error);
+  }
+}, [token]);
+  
+
   // Redirect ke halaman login bila token tidak ada
   useAuthRedirect();
 
-  const handleChangeStatus = async (slug, newStatus) => {
-    try {
-      const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        // Refresh data formulir setelah update status
-        fetchForms();
-      } else {
-        console.error('Gagal mengupdate status');
-      }
-    } catch (error) {
-      console.error(error);
+
+React.useEffect(() => {
+  fetchStatusCounts();
+}, [fetchStatusCounts]);
+
+const handleChangeStatus = async (slug, newStatus) => {
+  try {
+    const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) {
+      // Refresh data formulir setelah update status
+      fetchForms();
+      // Refresh dashboard status count
+      fetchStatusCounts();
+    } else {
+      console.error('Gagal mengupdate status');
     }
-  };
+  } catch (error) {
+    console.error(error);
+  }
+};
   
 
   // Fungsi untuk fetch data formulir
@@ -292,32 +326,32 @@ export default function DashboardPage() {
 
             {/* Overview Cards */}
             {user?.role === 'admin' && 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                title="Formulir Pending"
-                value="2"
-                description="Formulir yang belum diisi, wajib followup"
-                icon={<FileArchive className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Formulir Selesai"
-                value="2"
-                description="Formulir yang sudah di submit, wajib dicek"
-                icon={<FileText className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Dalam Proses"
-                value="2"
-                description="Berkas dalam tahap proses"
-                icon={<LoaderIcon className="h-4 w-4 text-muted-foreground" />}
-              />
-              <StatCard
-                title="Review"
-                value="8"
-                description="Followup client, untuk menyelesaikan"
-                icon={<Users className="h-4 w-4 text-muted-foreground" />}
-              />
-            </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Formulir Pending"
+          value={statusCounts.pending}
+          description="Formulir yang belum diisi, wajib follow-up"
+          icon={<FileArchive className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Formulir Selesai"
+          value={statusCounts.selesai}
+          description="Formulir yang sudah di-submit, wajib dicek"
+          icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Dalam Proses"
+          value={statusCounts.proses}
+          description="Berkas dalam tahap proses"
+          icon={<LoaderIcon className="h-4 w-4 text-muted-foreground" />}
+        />
+        <StatCard
+          title="Review"
+          value={statusCounts.review}
+          description="Follow-up client, untuk menyelesaikan"
+          icon={<Users className="h-4 w-4 text-muted-foreground" />}
+        />
+              </div>
             }
 
             {/* Tabs Section */}
