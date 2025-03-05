@@ -9,7 +9,7 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { useParams } from "next/navigation"; // untuk menangkap slug dari URL
-import { useAuth, useAuthRedirect } from "@/components/AuthContext";
+import { useAuth } from "@/components/AuthContext";
 
 interface FileItem {
   key: string;
@@ -49,9 +49,15 @@ function highlightText(text: string, query: string): JSX.Element {
 }
 
 export default function FileManagerPage() {
-  const { user, isAuthLoaded, token, setToken } = useAuth();
+  const { user, isAuthLoaded, token } = useAuth();
   const params = useParams();
-  const [folderPath, setFolderPath] = useState<string>("");
+  // Inisialisasi folderPath langsung dari params (jika slug tersedia)
+  const initialFolderPath = params?.slug
+    ? Array.isArray(params.slug)
+      ? params.slug[0]
+      : params.slug
+    : "";
+  const [folderPath, setFolderPath] = useState<string>(initialFolderPath);
   const [data, setData] = useState<FolderData>({ files: [], folders: [] });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,21 +78,16 @@ export default function FileManagerPage() {
   // State preview file
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
 
-  // Jika ada slug di URL (misalnya: /filemanager/(slugnya)), set sebagai folderPath
-  useEffect(() => {
-    if (params && params.slug && !folderPath) {
-      setFolderPath(params.slug);
-    }
-  }, [params, folderPath]);
-
-  // Ambil data folder; jika ada query, tambahkan param query
+  // Fungsi untuk mengambil data folder dari API dengan endpoint yang sudah disesuaikan
   const fetchFolderData = async (path: string, query?: string) => {
     setLoading(true);
     setError(null);
     try {
+      // Gunakan endpoint base dengan "berkas" sehingga jika ada path, akan menjadi:
+      // https://lv.adewahyudin.com/files/dokasah/berkas/{path}
       let url = path
-        ? `https://lv.adewahyudin.com/files/dokasah/${path}`
-        : "https://lv.adewahyudin.com/files/dokasah";
+        ? `https://lv.adewahyudin.com/files/dokasah/berkas/${path}`
+        : "https://lv.adewahyudin.com/files/dokasah/berkas";
       if (query) {
         url += `?q=${encodeURIComponent(query)}`;
       }
@@ -101,6 +102,7 @@ export default function FileManagerPage() {
     }
   };
 
+  // Panggil fetchFolderData hanya setelah folderPath sudah diketahui
   useEffect(() => {
     fetchFolderData(folderPath);
   }, [folderPath]);
@@ -115,8 +117,7 @@ export default function FileManagerPage() {
     e.preventDefault();
     setUploadMessage("");
 
-    // Jika sudah berada di folder, gunakan nilai folderPath sebagai slug,
-    // jika tidak, gunakan nilai dari input slug.
+    // Jika sudah berada di folder, gunakan folderPath sebagai slug, jika tidak, gunakan input slug.
     const uploadSlug = folderPath || slug;
 
     if (!fileUpload || !uploadSlug || !fieldName) {
@@ -131,8 +132,10 @@ export default function FileManagerPage() {
 
     setUploading(true);
 
-    // Jika upload dari folder tertentu, gunakan endpoint upload baru (misal: /api/upload-file)
-    const endpoint = folderPath ? "https://lv.adewahyudin.com/api/upload-file" : "https://lv.adewahyudin.com/api/upload";
+    // Jika upload dari folder tertentu, gunakan endpoint upload khusus
+    const endpoint = folderPath
+      ? "https://lv.adewahyudin.com/api/upload-file"
+      : "https://lv.adewahyudin.com/api/upload";
 
     try {
       const res = await fetch(endpoint, {

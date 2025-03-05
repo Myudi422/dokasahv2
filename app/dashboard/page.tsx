@@ -414,7 +414,9 @@ const handleChangeStatus = async (slug, newStatus) => {
     <DropdownMenuItem onClick={() => handleViewDetail(caseItem.slug)}>
       Lihat Detail
     </DropdownMenuItem>
-    <DropdownMenuItem>Tambahkan Dokumen</DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push(`/filemanager/${caseItem.slug}`)}>
+  Tambahkan Dokumen
+</DropdownMenuItem>
     {/* Opsi status untuk admin */}
     {user?.role === 'admin' && (
       <>

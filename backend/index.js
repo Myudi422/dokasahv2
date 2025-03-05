@@ -163,7 +163,7 @@ app.post('/api/upload-file', authenticateToken, upload.single('file'), async (re
   // Dapatkan ekstensi file (contoh: .jpg, .png)
   const extension = path.extname(file.originalname);
   // Buat path file sesuai format: dokasah/berkas/{slug}/{fieldName}{extension}
-  const filePath = `dokasah/${slug}/${fieldName}${extension}`;
+  const filePath = `dokasah/berkas/${slug}/${fieldName}${extension}`;
 
   try {
     const params = {
@@ -180,6 +180,7 @@ app.post('/api/upload-file', authenticateToken, upload.single('file'), async (re
     res.status(500).json({ message: 'Error uploading file to B2' });
   }
 });
+
 
 
 
