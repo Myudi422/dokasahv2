@@ -84,10 +84,10 @@ const fetchFolderData = async (path: string, query?: string) => {
     setError(null);
     try {
       // Gunakan endpoint base dengan "berkas" sehingga jika ada path, akan menjadi:
-      // https://lv.adewahyudin.com/files/dokasah/berkas/{path}
+      // https://dev.dokasah.web.id/files/dokasah/berkas/{path}
       let url = path
-        ? `https://lv.adewahyudin.com/files/dokasah/berkas/${path}`
-        : "https://lv.adewahyudin.com/files/dokasah/berkas";
+        ? `https://dev.dokasah.web.id/files/dokasah/berkas/${path}`
+        : "https://dev.dokasah.web.id/files/dokasah/berkas";
       if (query) {
         url += `?q=${encodeURIComponent(query)}`;
       }
@@ -151,8 +151,8 @@ const fetchFolderData = async (path: string, query?: string) => {
 
     // Jika upload dari folder tertentu, gunakan endpoint upload khusus
     const endpoint = folderPath
-      ? "https://lv.adewahyudin.com/api/upload-file"
-      : "https://lv.adewahyudin.com/api/upload";
+      ? "https://dev.dokasah.web.id/api/upload-file"
+      : "https://dev.dokasah.web.id/api/upload";
 
     try {
       const res = await fetch(endpoint, {

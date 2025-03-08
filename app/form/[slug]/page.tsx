@@ -37,7 +37,7 @@ export default function FormPage() {
     const fetchForm = async () => {
       try {
         setIsLoadingForm(true);
-        const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}`, {
+        const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -89,7 +89,7 @@ export default function FormPage() {
     formPayload.append('file', file);
 
     try {
-      const res = await fetch(`https://lv.adewahyudin.com/api/upload`, {
+      const res = await fetch(`https://dev.dokasah.web.id/api/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
@@ -136,7 +136,7 @@ export default function FormPage() {
   const saveDraft = async () => {
     try {
       setIsSavingDraft(true);
-      const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/draft`, {
+      const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/draft`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ export default function FormPage() {
 
   const handleEdit = async () => {
     try {
-      const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/status`, {
+      const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ export default function FormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/submit`, {
+      const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

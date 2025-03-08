@@ -20,7 +20,7 @@ export default function LoginPage() {
       try {
         const token = localStorage.getItem("token");
         if (token) {
-          const response = await fetch("http//localhost:3001/api/protected/api/protected", {
+          const response = await fetch("https://dev.dokasah.web.id/api/protected/api/protected", {
             headers: { Authorization: `Bearer ${token}` },
           });
           

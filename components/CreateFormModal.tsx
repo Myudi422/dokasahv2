@@ -21,7 +21,7 @@ const handleSubmit = async (e) => {
   setIsLoading(true);
   
   try {
-    const response = await fetch('https://lv.adewahyudin.com/api/forms', { // Ganti dengan URL lokal
+    const response = await fetch('https://dev.dokasah.web.id/api/forms', { // Ganti dengan URL lokal
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

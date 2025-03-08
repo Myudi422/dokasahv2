@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (token) {
-      fetch('https://lv.adewahyudin.com/api/protected', {
+      fetch('https://dev.dokasah.web.id/api/protected', {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => {
