@@ -13,7 +13,7 @@ const PORT = 3001;
 
 // Middleware CORS dan JSON parser
 app.use(cors({
-  origin: "https://adewahyudin.com",
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
