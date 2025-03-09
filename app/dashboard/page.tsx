@@ -58,7 +58,7 @@ export default function DashboardPage() {
 const fetchStatusCounts = React.useCallback(async () => {
   if (!token) return;
   try {
-    const response = await fetch("https://lv.adewahyudin.com/api/dashboard/status-count", {
+    const response = await fetch("https://dev.dokasah.web.id/api/dashboard/status-count", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -84,7 +84,7 @@ React.useEffect(() => {
 
 const handleChangeStatus = async (slug, newStatus) => {
   try {
-    const res = await fetch(`https://lv.adewahyudin.com/api/forms/${slug}/status`, {
+    const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/status`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ const handleChangeStatus = async (slug, newStatus) => {
   // Fungsi untuk fetch data formulir
   const fetchForms = React.useCallback(async () => {
     try {
-      const res = await fetch('https://lv.adewahyudin.com/api/dashboard/forms', {
+      const res = await fetch('https://dev.dokasah.web.id/api/dashboard/forms', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
