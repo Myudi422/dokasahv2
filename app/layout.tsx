@@ -1,6 +1,7 @@
 import type React from "react";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthContext";
+import { Analytics } from "@vercel/analytics/react"
 
 import "./globals.css";
 
@@ -24,6 +25,7 @@ export default function RootLayout({
       <AuthProvider>
         <body className={inter.className}>{children}</body>
       </AuthProvider>
+      <Analytics/>
     </html>
   );
 }
