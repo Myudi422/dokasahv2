@@ -1,5 +1,4 @@
 require("dotenv").config();
-const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -9,15 +8,11 @@ const fs = require("fs");
 const https = require("https");
 const AWS = require("aws-sdk");
 
-const app = express();
-const PORT = 443;
+const express = require('express')
+const app = express()
+const port = process.env.PORT || 3000
 
-// Middleware CORS dan JSON parser
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(cors()); // Mengizinkan semua domain
 app.use(express.json());
 
 // Konfigurasi AWS SDK untuk Backblaze B2
