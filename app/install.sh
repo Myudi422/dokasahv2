@@ -10,14 +10,7 @@ run_command() {
     fi
 }
 
-# Hapus instalasi lama
-run_command "sudo systemctl stop nginx"
-run_command "sudo systemctl disable nginx"
-run_command "sudo apt remove --purge -y nginx nginx-common nginx-full"
-run_command "sudo rm -rf /etc/nginx /var/www/html /etc/letsencrypt /etc/nginx/sites-enabled/* /etc/nginx/sites-available/*"
-run_command "sudo ufw delete allow 80/tcp"
-run_command "sudo ufw delete allow 443/tcp"
-run_command "rm -rf ~/dokasahv2"
+# Hapus instalasi lam
 
 # Update dan upgrade sistem
 run_command "sudo apt update && sudo apt upgrade -y"

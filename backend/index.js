@@ -6,10 +6,11 @@ const jwt = require("jsonwebtoken");
 const multer  = require("multer");
 const path = require("path");
 const fs = require("fs");
+const https = require("https");
 const AWS = require("aws-sdk");
 
 const app = express();
-const PORT = 3001;
+const PORT = 443;
 
 // Middleware CORS dan JSON parser
 app.use(cors({
@@ -577,5 +578,5 @@ app.put('/api/forms/:slug/status', authenticateToken, async (req, res) => {
 
 // Jalankan server
 app.listen(PORT, () => {
-  console.log(`Backend berjalan di http://localhost:${PORT}`);
+  console.log(`Backend berjalan di https://localhost:${PORT}`);
 });
