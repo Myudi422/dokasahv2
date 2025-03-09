@@ -275,9 +275,10 @@ const fetchFolderData = async (path: string, query?: string) => {
                 className="cursor-pointer p-4 border rounded-lg hover:shadow-md transition duration-200 flex flex-col items-center"
               >
                 <FolderIcon size={48} className="text-yellow-500 mb-2" />
-                <span className="text-center text-sm font-medium">
-                  {highlightText(folder.name, searchQuery)}
-                </span>
+                <span className="text-center text-sm font-medium truncate w-full overflow-hidden whitespace-nowrap">
+  {highlightText(folder.name, searchQuery)}
+</span>
+
               </div>
             ))}
           </div>

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileUpload } from "@/components/FileUpload";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import MultiSelect from '@/components/MultiSelect';
+import LocationSearch from '@/components/LocationSearch';
 
 export default function FormPage() {
   const { slug } = useParams();
@@ -27,8 +28,7 @@ export default function FormPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [isFirstSubmit, setIsFirstSubmit] = useState(true);
 
-  // Variabel untuk menentukan apakah formulir dapat diedit.
-  // Form dapat diedit hanya jika status adalah 'draft', null, atau 'submitted'.
+  // Form dapat diedit jika statusnya 'draft', null, atau 'submitted'
   const isEditable = submissionStatus === 'draft' || submissionStatus === 'submitted' || submissionStatus === null;
 
   useEffect(() => {
@@ -53,19 +53,20 @@ export default function FormPage() {
           fields: data.form.form_structure?.fields || []
         };
 
-        // Load opsi untuk field multi-select jika ada options_url
-        const updatedFields = await Promise.all(loadedConfig.fields.map(async field => {
-          if (field.type === 'multi-select' && field.options_url) {
-            const res = await fetch(field.options_url);
-            const json = await res.json();
-            // Transform data KBLI menjadi format opsi:
-            field.options = (json.data || json).map(item => ({
-              value: item.Kode,
-              label: `${item.Kode} - ${item.Judul}`
-            }));
-          }
-          return field;
-        }));
+        // Jika ada field multi-select dengan options_url, load opsi KBLI
+        const updatedFields = await Promise.all(
+          loadedConfig.fields.map(async (field) => {
+            if (field.type === 'multi-select' && field.options_url) {
+              const res = await fetch(field.options_url);
+              const json = await res.json();
+              field.options = (json.data || json).map(item => ({
+                value: item.Kode,
+                label: `${item.Kode} - ${item.Judul}`
+              }));
+            }
+            return field;
+          })
+        );
         loadedConfig.fields = updatedFields;
 
         setFormConfig(loadedConfig);
@@ -81,7 +82,7 @@ export default function FormPage() {
     fetchForm();
   }, [slug, token]);
 
-  // Fungsi untuk upload file ke backend
+  // Fungsi upload file ke backend
   const uploadFile = async (fieldName, file) => {
     const formPayload = new FormData();
     formPayload.append('slug', slug);
@@ -133,6 +134,7 @@ export default function FormPage() {
     }
   };
 
+  // Simpan draft otomatis
   const saveDraft = async () => {
     try {
       setIsSavingDraft(true);
@@ -205,6 +207,18 @@ export default function FormPage() {
     }
   };
 
+  // Callback untuk update lokasi dari API pos
+  const handleLocationSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      desa_kelurahan: location.village,
+      kecamatan: location.district,
+      kabupaten_kota: location.regency,
+      provinsi: location.province,
+      kode_pos: location.code, // Asumsi 'code' adalah kode pos
+    }));
+  };
+
   if (!user || !isAuthLoaded || isLoadingForm) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -264,83 +278,160 @@ export default function FormPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {formConfig.fields.map((field) => (
-          <div key={field.name}>
-            <label className="block mb-1 text-sm sm:text-base font-medium">
-              {field.label} {field.required && <span className="text-red-500">*</span>}
-            </label>
-            {field.type === 'text' && (
-              <Input
-                type="text"
-                value={formData[field.name] || ''}
-                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                required={field.required}
-                className="w-full"
-                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-              />
-            )}
-            {field.type === 'textarea' && (
-              <Textarea
-                value={formData[field.name] || ''}
-                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                required={field.required}
-                className="w-full"
-                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-              />
-            )}
-            {field.type === 'select' && (
-              <Select 
-                onValueChange={(value) => setFormData({ ...formData, [field.name]: value })}
-                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={`Pilih ${field.label}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {field.options?.map((option, index) => {
-                    const optionValue = typeof option === 'string' ? option : option.value;
-                    const optionLabel = typeof option === 'string' ? option : option.label;
-                    return (
-                      <SelectItem key={`${optionValue}-${index}`} value={optionValue}>
-                        {optionLabel}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            )}
-            {field.type === 'multi-select' && (
-              <MultiSelect
-                options={field.options || []}
-                placeholder={`Cari dan pilih ${field.label}`}
-                value={formData[field.name] || []}
-                onChange={(selectedValues) => setFormData({ ...formData, [field.name]: selectedValues })}
-                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-              />
-            )}
-            {field.type === 'number' && (
-              <Input
-                type="number"
-                value={formData[field.name] || ''}
-                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                required={field.required}
-                className="w-full"
-                min={0}
-                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-              />
-            )}
-            {field.type === 'date' && (
-              <Input
-                type="date"
-                value={formData[field.name] || ''}
-                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                required={field.required}
-                className="w-full"
-                disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-              />
-            )}
-            {field.type === 'file' && (
-              <div className="space-y-2">
+        {formConfig.fields.map((field) => {
+          // Gunakan LocationSearch untuk field desa_kelurahan
+          if (field.name === "desa_kelurahan") {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <LocationSearch onSelect={handleLocationSelect} />
+              </div>
+            );
+          }
+          // Untuk field lokasi lainnya, tampilkan input non-editable
+          if (
+            field.name === "kecamatan" ||
+            field.name === "kabupaten_kota" ||
+            field.name === "provinsi" ||
+            field.name === "kode_pos"
+          ) {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <Input
+                  type={field.name === "kode_pos" ? "number" : "text"}
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                  required={field.required}
+                  className="w-full"
+                  disabled
+                />
+              </div>
+            );
+          }
+          // Render field lain sesuai tipe-nya
+          if (field.type === 'text') {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <Input
+                  type="text"
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                  required={field.required}
+                  className="w-full"
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                />
+              </div>
+            );
+          }
+          if (field.type === 'textarea') {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <Textarea
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                  required={field.required}
+                  className="w-full"
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                />
+              </div>
+            );
+          }
+          if (field.type === 'select') {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <Select 
+                  onValueChange={(value) => setFormData({ ...formData, [field.name]: value })}
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={`Pilih ${field.label}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option, index) => {
+                      const optionValue = typeof option === 'string' ? option : option.value;
+                      const optionLabel = typeof option === 'string' ? option : option.label;
+                      return (
+                        <SelectItem key={`${optionValue}-${index}`} value={optionValue}>
+                          {optionLabel}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            );
+          }
+          if (field.type === 'multi-select') {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <MultiSelect
+                  options={field.options || []}
+                  placeholder={`Cari dan pilih ${field.label}`}
+                  value={formData[field.name] || []}
+                  onChange={(selectedValues) => setFormData({ ...formData, [field.name]: selectedValues })}
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                />
+              </div>
+            );
+          }
+          if (field.type === 'number') {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <Input
+                  type="number"
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                  required={field.required}
+                  className="w-full"
+                  min={0}
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                />
+              </div>
+            );
+          }
+          if (field.type === 'date') {
+            return (
+              <div key={field.name}>
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <Input
+                  type="date"
+                  value={formData[field.name] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                  required={field.required}
+                  className="w-full"
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                />
+              </div>
+            );
+          }
+          if (field.type === 'file') {
+            return (
+              <div key={field.name} className="space-y-2">
+                <label className="block mb-1 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
                 <FileUpload
                   accept={field.accept}
                   onFileSelect={(file) => handleFileChange(field.name, file)}
@@ -353,44 +444,42 @@ export default function FormPage() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          }
+          return null;
+        })}
 
-        {/* Hanya tampilkan tombol submit/edit jika formulir dapat diedit */}
-        {isEditable && (
-          <div className="flex flex-col sm:flex-row justify-end gap-4">
-            {submissionStatus === 'submitted' && isEditing ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setIsEditing(false);
-                  setSubmissionStatus('submitted');
-                }}
-                className="w-full sm:w-auto"
-              >
-                Batal Edit
-              </Button>
-            ) : submissionStatus === 'draft' ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.back()}
-                className="w-full sm:w-auto"
-              >
-                Batal
-              </Button>
-            ) : null}
-
-            <Button type="submit" disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)} className="w-full sm:w-auto">
-              {isSavingDraft && (
-                <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-              )}
-              {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
+        <div className="flex flex-col sm:flex-row justify-end gap-4">
+          {submissionStatus === 'submitted' && isEditing ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsEditing(false);
+                setSubmissionStatus('submitted');
+              }}
+              className="w-full sm:w-auto"
+            >
+              Batal Edit
             </Button>
-          </div>
-        )}
+          ) : submissionStatus === 'draft' ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.back()}
+              className="w-full sm:w-auto"
+            >
+              Batal
+            </Button>
+          ) : null}
+
+          <Button type="submit" disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)} className="w-full sm:w-auto">
+            {isSavingDraft && (
+              <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+            )}
+            {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
+          </Button>
+        </div>
       </form>
 
       <Dialog open={showPopup} onOpenChange={setShowPopup}>

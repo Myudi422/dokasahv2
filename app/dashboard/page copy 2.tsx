@@ -222,8 +222,6 @@ export default function DashboardPage() {
             <Tabs defaultValue="cases" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="cases">Formulir Terkini</TabsTrigger>
-                <TabsTrigger value="documents">Recent Documents</TabsTrigger>
-                <TabsTrigger value="activities">Activities</TabsTrigger>
               </TabsList>
               
               <TabsContent value="cases" className="space-y-4">
