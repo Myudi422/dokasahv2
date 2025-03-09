@@ -47,7 +47,7 @@ export default function LoginPage() {
       // Ambil data gambar profil dari akun Google
       const profilePicture = user.photoURL || null;
   
-      const response = await fetch("https://lv.adewahyudin.com/api/auth", {
+      const response = await fetch("https://dev.dokasah.web.id/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
