@@ -778,17 +778,7 @@ export default function LandingPage() {
                 </li>
                 <li>
                   <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Karir
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
                     Blog
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    FAQ
                   </Link>
                 </li>
               </ul>
@@ -812,7 +802,7 @@ export default function LandingPage() {
                     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
-                  <span>Jl. Contoh No. 123, Jakarta</span>
+                  <span>Kedung Pengawas, Kec. Babelan, Kabupaten Bekasi, Jawa Barat 17610, Indonesia</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm text-muted-foreground">
                   <svg
@@ -850,7 +840,7 @@ export default function LandingPage() {
                     <rect width="20" height="16" x="2" y="4" rx="2" />
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                   </svg>
-                  <span>cs@dokasah.com</span>
+                  <span>cs@dokasah.web.id</span>
                 </li>
               </ul>
             </div>
