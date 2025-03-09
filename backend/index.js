@@ -15,6 +15,12 @@ const port = process.env.PORT || 3000
 app.use(cors()); // Mengizinkan semua domain
 app.use(express.json());
 
+// Baca sertifikat SSL
+const options = {
+  key: fs.readFileSync("privkey.pem"), // Private Key
+  cert: fs.readFileSync("cert.pem"),   // Certificate
+};
+
 // Konfigurasi AWS SDK untuk Backblaze B2
 const s3 = new AWS.S3({
   endpoint: process.env.B2_ENDPOINT || "https://s3.us-east-005.backblazeb2.com",
