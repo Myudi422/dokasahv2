@@ -81,6 +81,7 @@ export default function CreateFormModal() {
                 className="w-full px-3 py-2 border rounded-md"
               >
                 <option value="pt_perorangan">PT Perorangan</option>
+                <option value="yayasan">Pendirian Yayasan</option>
                 <option value="npwp_pribadi">Pembuatan NPWP PRIBADI</option>
               </select>
             </div>
