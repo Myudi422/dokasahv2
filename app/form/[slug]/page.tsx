@@ -11,6 +11,8 @@ import { FileUpload } from "@/components/FileUpload";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import MultiSelect from '@/components/MultiSelect';
 import LocationSearch from '@/components/LocationSearch';
+import { jsPDF } from 'jspdf';
+
 
 export default function FormPage() {
   const { slug } = useParams();
@@ -81,6 +83,121 @@ export default function FormPage() {
 
     fetchForm();
   }, [slug, token]);
+
+
+// Helper untuk load, mengkompres, dan mengubah ukuran gambar
+const loadImageWithDimensions = (url, scaleFactor = 0.5, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      // Ubah ukuran gambar berdasarkan scale factor
+      canvas.width = img.width * scaleFactor;
+      canvas.height = img.height * scaleFactor;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Konversi ke JPEG dengan kualitas yang diatur (0 sampai 1)
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve({ dataUrl, width: canvas.width, height: canvas.height });
+    };
+    img.onerror = () => reject(new Error('Could not load image'));
+    img.src = url;
+  });
+};
+
+const generatePDF = async () => {
+  if (!formConfig) return;
+  const doc = new jsPDF();
+
+  // Atur margin dan ukuran halaman
+  const leftMargin = 10;
+  const rightMargin = 10;
+  const topMargin = 10;
+  const bottomMargin = 10;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const effectiveWidth = pageWidth - leftMargin - rightMargin;
+  let y = topMargin;
+
+  // Judul Form
+  doc.setFontSize(16);
+  const titleLines = doc.splitTextToSize(formConfig.title, effectiveWidth);
+  titleLines.forEach((line) => {
+    if (y > pageHeight - bottomMargin) {
+      doc.addPage();
+      y = topMargin;
+    }
+    doc.text(line, leftMargin, y);
+    y += 10;
+  });
+  y += 5; // Spasi tambahan setelah judul
+
+  // Isi setiap field
+  doc.setFontSize(12);
+  for (const field of formConfig.fields) {
+    const value = formData[field.name] || '';
+    // Jika field bertipe file dan URL berakhiran ekstensi gambar
+    if (field.type === 'file' && value.match(/\.(jpeg|jpg|gif|png)$/i)) {
+      try {
+        // Menggunakan scaleFactor dan quality untuk mengompres gambar
+        const { dataUrl, width, height } = await loadImageWithDimensions(value, 0.5, 0.7);
+        // Tentukan ukuran gambar yang ditampilkan (misalnya full width dalam batas margin)
+        const desiredWidth = effectiveWidth;
+        const aspectRatio = height / width;
+        const desiredHeight = desiredWidth * aspectRatio;
+        // Jika gambar tidak muat di halaman, tambahkan halaman baru
+        if (y + desiredHeight > pageHeight - bottomMargin) {
+          doc.addPage();
+          y = topMargin;
+        }
+        // Tambahkan label field
+        const label = `${field.label}:`;
+        const labelLines = doc.splitTextToSize(label, effectiveWidth);
+        labelLines.forEach((line) => {
+          if (y > pageHeight - bottomMargin) {
+            doc.addPage();
+            y = topMargin;
+          }
+          doc.text(line, leftMargin, y);
+          y += 10;
+        });
+        // Tambahkan gambar ke PDF
+        doc.addImage(dataUrl, 'JPEG', leftMargin, y, desiredWidth, desiredHeight);
+        y += desiredHeight + 10; // Spasi setelah gambar
+      } catch (error) {
+        // Jika gagal memuat gambar, fallback ke tampilan teks URL
+        const text = `${field.label}: ${value}`;
+        const textLines = doc.splitTextToSize(text, effectiveWidth);
+        textLines.forEach((line) => {
+          if (y > pageHeight - bottomMargin) {
+            doc.addPage();
+            y = topMargin;
+          }
+          doc.text(line, leftMargin, y);
+          y += 10;
+        });
+      }
+    } else {
+      // Untuk field non-gambar, tampilkan label dan value sebagai teks
+      const text = `${field.label}: ${value}`;
+      const textLines = doc.splitTextToSize(text, effectiveWidth);
+      textLines.forEach((line) => {
+        if (y > pageHeight - bottomMargin) {
+          doc.addPage();
+          y = topMargin;
+        }
+        doc.text(line, leftMargin, y);
+        y += 10;
+      });
+    }
+  }
+
+  // Simpan file PDF (akan langsung diunduh di sisi klien, tidak disimpan ke server)
+  doc.save(`${formConfig.title}.pdf`);
+};
+
+  
 
   // Fungsi upload file ke backend
   const uploadFile = async (fieldName, file) => {
@@ -479,22 +596,27 @@ export default function FormPage() {
             )}
             {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
           </Button>
+          {/* Kondisi untuk Generate PDF */}
+{submissionStatus !== 'draft' && (
+  <Button onClick={generatePDF}>Generate PDF</Button>
+)}
         </div>
       </form>
 
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Form Berhasil Dikirim! 🎉</DialogTitle>
-            <DialogDescription>
-              Data formulir telah berhasil dikirim. Anda dapat menutup halaman ini atau melakukan edit kembali dengan mengklik ikon pensil di pojok kanan atas.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end">
-            <Button onClick={() => setShowPopup(false)}>Tutup</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Form Berhasil Dikirim! 🎉</DialogTitle>
+      <DialogDescription>
+        Data formulir telah berhasil dikirim. Anda dapat menutup halaman ini atau melakukan edit kembali dengan mengklik ikon pensil di pojok kanan atas.
+      </DialogDescription>
+    </DialogHeader>
+    <div className="flex justify-end gap-4">
+      <Button onClick={generatePDF}>Generate PDF</Button>
+      <Button onClick={() => setShowPopup(false)}>Tutup</Button>
+    </div>
+  </DialogContent>
+</Dialog>
     </div>
   );
 }
