@@ -106,96 +106,181 @@ const loadImageWithDimensions = (url, scaleFactor = 0.5, quality = 0.7) => {
   });
 };
 
+// Tambahkan fungsi untuk menambah item grup
+const addGroupItem = (groupFieldName, groupFields) => {
+  const newItem = {};
+  groupFields.forEach(subField => {
+    newItem[subField.name] = '';
+  });
+  setFormData(prev => ({
+    ...prev,
+    [groupFieldName]: [...(prev[groupFieldName] || []), newItem]
+  }));
+};
+
+// Fungsi untuk menghapus item grup
+const removeGroupItem = (groupFieldName, index) => {
+  const groupValues = formData[groupFieldName] || [];
+  groupValues.splice(index, 1);
+  setFormData(prev => ({
+    ...prev,
+    [groupFieldName]: [...groupValues]
+  }));
+};
+
+const uploadFileForRepeat = async (groupFieldName, index, subFieldName, file) => {
+  try {
+    // Membuat nama file unik dengan menambahkan indeks (_1, _2, dst)
+    const uniqueFileName = `${groupFieldName}_${subFieldName}_${index + 1}`;
+    const filePath = await uploadFile(uniqueFileName, file);
+    const groupValues = formData[groupFieldName] || [];
+    groupValues[index][subFieldName] = filePath;
+    setFormData(prev => ({
+      ...prev,
+      [groupFieldName]: [...groupValues]
+    }));
+  } catch (error) {
+    console.error('Error saat upload file untuk pengurus:', error);
+  }
+};
+
+
+
 const generatePDF = async () => {
   if (!formConfig) return;
   const doc = new jsPDF();
 
-  // Atur margin dan ukuran halaman
-  const leftMargin = 10;
-  const rightMargin = 10;
-  const topMargin = 10;
-  const bottomMargin = 10;
+  const leftMargin = 10, rightMargin = 10, topMargin = 10, bottomMargin = 10;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const effectiveWidth = pageWidth - leftMargin - rightMargin;
   let y = topMargin;
 
-  // Judul Form
+  // **Judul Form**
   doc.setFontSize(16);
   const titleLines = doc.splitTextToSize(formConfig.title, effectiveWidth);
   titleLines.forEach((line) => {
-    if (y > pageHeight - bottomMargin) {
-      doc.addPage();
-      y = topMargin;
-    }
+    if (y > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
     doc.text(line, leftMargin, y);
     y += 10;
   });
-  y += 5; // Spasi tambahan setelah judul
+  y += 5;
 
-  // Isi setiap field
+  // **Fungsi untuk Kompresi Gambar dan Konversi ke Base64**
+  const compressImage = async (imageUrl, maxWidth = 1080) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = "Anonymous"; // Hindari masalah CORS
+      img.src = imageUrl;
+  
+      return new Promise((resolve) => {
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+  
+          // **Pastikan gambar tidak melebihi lebar canvas**
+          if (width > maxWidth) {
+            const scaleFactor = maxWidth / width;
+            width = maxWidth;
+            height = height * scaleFactor;
+          }
+  
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+  
+          // **Gambar ulang dengan ukuran yang sesuai**
+          ctx.drawImage(img, 0, 0, width, height);
+  
+          // **Kompresi ke format JPEG dengan kualitas tinggi (90%)**
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+      });
+    } catch (error) {
+      console.error("Gagal memproses gambar:", error);
+      return null;
+    }
+  };
+  
+
+  // **Isi Form**
   doc.setFontSize(12);
   for (const field of formConfig.fields) {
-    const value = formData[field.name] || '';
-    // Jika field bertipe file dan URL berakhiran ekstensi gambar
-    if (field.type === 'file' && value.match(/\.(jpeg|jpg|gif|png)$/i)) {
-      try {
-        // Menggunakan scaleFactor dan quality untuk mengompres gambar
-        const { dataUrl, width, height } = await loadImageWithDimensions(value, 0.5, 0.7);
-        // Tentukan ukuran gambar yang ditampilkan (misalnya full width dalam batas margin)
-        const desiredWidth = effectiveWidth;
-        const aspectRatio = height / width;
-        const desiredHeight = desiredWidth * aspectRatio;
-        // Jika gambar tidak muat di halaman, tambahkan halaman baru
-        if (y + desiredHeight > pageHeight - bottomMargin) {
-          doc.addPage();
-          y = topMargin;
+    let value = formData[field.name] || '';
+
+    // **Jika Field adalah Array (contoh: Pengurus)**
+    if (Array.isArray(value)) {
+      doc.text(`${field.label}:`, leftMargin, y);
+      y += 5;
+      for (const item of value) {
+        if (typeof item === 'object' && item !== null) {
+          for (const [key, val] of Object.entries(item)) {
+            if (typeof val === "string" && val.match(/\.(jpeg|jpg|png|gif)$/i)) {
+              // **Kompresi gambar sebelum dimasukkan**
+              const compressedImage = await compressImage(val);
+              if (compressedImage) {
+                const imgWidth = 100; // Lebih kecil agar lebih rapi
+                const imgHeight = imgWidth * 0.75; // Menjaga aspek rasio
+
+                if (y + imgHeight > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
+
+                doc.text(`- ${key}:`, leftMargin, y);
+                y += 5;
+                doc.addImage(compressedImage, 'JPEG', leftMargin, y, imgWidth, imgHeight);
+                y += imgHeight + 10;
+              } else {
+                doc.text(`- ${key}: (Gagal Memuat Gambar)`, leftMargin, y);
+                y += 10;
+              }
+            } else {
+              doc.text(`- ${key}: ${val}`, leftMargin, y);
+              y += 5;
+            }
+          }
+        } else {
+          doc.text(`- ${item}`, leftMargin + 5, y);
+          y += 5;
         }
-        // Tambahkan label field
-        const label = `${field.label}:`;
-        const labelLines = doc.splitTextToSize(label, effectiveWidth);
-        labelLines.forEach((line) => {
-          if (y > pageHeight - bottomMargin) {
-            doc.addPage();
-            y = topMargin;
-          }
-          doc.text(line, leftMargin, y);
-          y += 10;
-        });
-        // Tambahkan gambar ke PDF
-        doc.addImage(dataUrl, 'JPEG', leftMargin, y, desiredWidth, desiredHeight);
-        y += desiredHeight + 10; // Spasi setelah gambar
-      } catch (error) {
-        // Jika gagal memuat gambar, fallback ke tampilan teks URL
-        const text = `${field.label}: ${value}`;
-        const textLines = doc.splitTextToSize(text, effectiveWidth);
-        textLines.forEach((line) => {
-          if (y > pageHeight - bottomMargin) {
-            doc.addPage();
-            y = topMargin;
-          }
-          doc.text(line, leftMargin, y);
-          y += 10;
-        });
       }
-    } else {
-      // Untuk field non-gambar, tampilkan label dan value sebagai teks
-      const text = `${field.label}: ${value}`;
-      const textLines = doc.splitTextToSize(text, effectiveWidth);
-      textLines.forEach((line) => {
-        if (y > pageHeight - bottomMargin) {
-          doc.addPage();
-          y = topMargin;
-        }
-        doc.text(line, leftMargin, y);
-        y += 10;
-      });
+      y += 5;
+      continue;
     }
+
+    // **Jika Field adalah Gambar**
+    if (typeof value === "string" && value.match(/\.(jpeg|jpg|gif|png)$/i)) {
+      const compressedImage = await compressImage(value);
+      if (compressedImage) {
+        const imgWidth = 50;
+        const imgHeight = imgWidth * 0.75; // Menjaga aspek rasio
+
+        if (y + imgHeight > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
+
+        doc.text(`${field.label}:`, leftMargin, y);
+        y += 10;
+        doc.addImage(compressedImage, 'JPEG', leftMargin, y, imgWidth, imgHeight);
+        y += imgHeight + 10;
+      } else {
+        doc.text(`${field.label}: (Gagal Memuat Gambar)`, leftMargin, y);
+        y += 10;
+      }
+      continue;
+    }
+
+    // **Default (Teks Normal)**
+    const text = `${field.label}: ${value}`;
+    const textLines = doc.splitTextToSize(text, effectiveWidth);
+    textLines.forEach((line) => {
+      if (y > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
+      doc.text(line, leftMargin, y);
+      y += 10;
+    });
   }
 
-  // Simpan file PDF (akan langsung diunduh di sisi klien, tidak disimpan ke server)
+  // **Simpan PDF**
   doc.save(`${formConfig.title}.pdf`);
 };
+
 
   
 
@@ -464,6 +549,84 @@ const generatePDF = async () => {
               </div>
             );
           }
+          if (field.type === 'repeat') {
+            const groupValues = formData[field.name] || [];
+            return (
+              <div key={field.name} className="border p-4 rounded mb-4">
+                <label className="block mb-2 text-sm sm:text-base font-medium">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                {groupValues.map((groupItem, index) => (
+                  <div key={index} className="border p-3 rounded mb-3">
+                    {field.fields.map((subField) => {
+                      const subFieldKey = `${field.name}-${index}-${subField.name}`;
+                      const value = groupItem[subField.name] || '';
+                      if (subField.type === 'text') {
+                        return (
+                          <div key={subFieldKey} className="mb-2">
+                            <label className="block mb-1 text-sm font-medium">
+                              {subField.label} {subField.required && <span className="text-red-500">*</span>}
+                            </label>
+                            <Input
+                              type="text"
+                              value={value}
+                              onChange={(e) => {
+                                const newGroupValues = [...groupValues];
+                                newGroupValues[index][subField.name] = e.target.value;
+                                setFormData({ ...formData, [field.name]: newGroupValues });
+                              }}
+                              required={subField.required}
+                              className="w-full"
+                              disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                            />
+                          </div>
+                        );
+                      }
+                      if (subField.type === 'file') {
+                        return (
+                          <div key={subFieldKey} className="mb-2 space-y-2">
+                            <label className="block mb-1 text-sm font-medium">
+                              {subField.label} {subField.required && <span className="text-red-500">*</span>}
+                            </label>
+                            <FileUpload
+                              accept={subField.accept}
+                              onFileSelect={(file) =>
+                                uploadFileForRepeat(field.name, index, subField.name, file)
+                              }
+                              className="w-full"
+                              disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+                            />
+                            {value && (
+                              <div className="mt-2">
+                                <img src={`${value}?t=${Date.now()}`} alt="Preview" className="max-w-xs mt-1" />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
+                    <Button
+                      type="button"
+                      onClick={() => removeGroupItem(field.name, index)}
+                      variant="outline"
+                      className="mt-2"
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  onClick={() => addGroupItem(field.name, field.fields)}
+                  className="mt-2"
+                >
+                  Tambah Pengurus
+                </Button>
+              </div>
+            );
+          }
+          
           if (field.type === 'select') {
             return (
               <div key={field.name}>
