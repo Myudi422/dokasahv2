@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://dokasah.web.id
+
+# Sitemaps
+Sitemap: https://dokasah.web.id/sitemap.xml
