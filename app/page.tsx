@@ -1,6 +1,8 @@
 "use client"; // This makes the component a Client Component
 
 import Image from "next/image"
+import Head from 'next/head';
+
 import Link from "next/link"
 import { Star, CheckCircle, ArrowRight, BarChart2, FolderOpen, FileText, Phone, MessageCircle } from "lucide-react"
 
@@ -10,6 +12,16 @@ import { Badge } from "@/components/ui/badge"
 
 export default function LandingPage() {
   return (
+    <>
+      <Head>
+      <title>Jasa Legalitas Murah & Terpercaya - Dokasah</title>
+<meta name="description" content="Butuh jasa legalitas murah? Dokasah membantu pembuatan PT, CV, izin usaha, dan dokumen hukum lainnya dengan cepat & terpercaya." />
+<meta name="keywords" content="jasa legalitas, pembuatan PT, jasa pendirian CV, izin usaha, legalitas perusahaan, pengurusan izin usaha" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://dokasah.web.id/layanan" />
+
+      </Head>
+
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
         <div className="container flex h-16 items-center justify-between">
@@ -861,6 +873,7 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </>
   )
 }
 

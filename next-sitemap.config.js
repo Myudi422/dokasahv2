@@ -1,6 +1,12 @@
 /** @type {import('next-sitemap').IConfig} */
 module.exports = {
-    siteUrl: 'https://dokasah.web.id', // Ganti dengan domain website kamu
-    generateRobotsTxt: true, // Opsional, untuk buat robots.txt
-  };
-  
+  siteUrl: 'https://dokasah.web.id',
+  generateRobotsTxt: true,
+  exclude: ['/dashboard', '/login', '/filemanager'], // Halaman yang tidak perlu diindeks
+  robotsTxtOptions: {
+    policies: [
+      { userAgent: '*', allow: '/' },
+      { userAgent: '*', disallow: ['/dashboard', '/login', '/filemanager'] }
+    ],
+  },
+};
