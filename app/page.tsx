@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Head from 'next/head';
-
+import { sendGTMEvent } from '@next/third-parties/google'
 import Link from "next/link"
 import { Star, CheckCircle, ArrowRight, BarChart2, FolderOpen, FileText, Phone, MessageCircle } from "lucide-react"
 
@@ -411,30 +411,21 @@ export default function LandingPage() {
       {/* Tombol Cek Semua Layanan */}
 <div className="flex justify-center mt-8">
 <a
-  href="/layanan"
-  className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2"
-  onClick={() => {
-    // Google Pixel Event Tracking
-    if (typeof window !== "undefined" && window.dataLayer) {
-      window.dataLayer.push({
-        event: "cta_button_click",
-        content_name: 'Cek Semua Layanan Kami',
-        content_category: 'CTA Button',
-      });
-    }
-
-    // Meta Pixel Event Tracking
-    if (typeof window !== "undefined" && window.fbq) {
-      window.fbq('track', 'Lead', {
-        content_name: 'Cek Semua Layanan Kami',
-        content_category: 'CTA Button',
-      });
-    }
-  }}
->
-  Cek Semua Layanan Kami
-  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-</a>
+          href="/layanan"
+          className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2"
+          onClick={() => {
+            // Sending custom event for Google Tag Manager (GTM)
+            sendGTMEvent({
+              event: 'cta_button_click',
+              value: 'Cek Semua Layanan Kami',
+              content_name: 'Cek Semua Layanan Kami',
+              content_category: 'CTA Button',
+            });
+          }}
+        >
+          Cek Semua Layanan Kami
+          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </a>
 
 </div>
     </div>
@@ -581,38 +572,26 @@ export default function LandingPage() {
   </CardContent>
   <CardFooter>
   <Button
-  className="w-full"
-  onClick={() => {
-    console.log(`Navigating to WhatsApp for: ${service.title}`);
+              className="w-full"
+              onClick={() => {
+                // Send custom event for Google Tag Manager (GTM)
+                sendGTMEvent({
+                  event: 'cta_button_click',
+                  value: `Hubungi Kami - ${service.title}`,
+                  content_name: `Hubungi Kami - ${service.title}`,
+                  content_category: 'CTA Button',
+                });
 
-    // Google Pixel Event Tracking
-    if (typeof window !== "undefined" && window.dataLayer) {
-      window.dataLayer.push({
-        event: "cta_button_click",
-        content_name: `Hubungi Kami - ${service.title}`,
-        content_category: "CTA Button",
-      });
-    }
-
-    // Meta Pixel Event Tracking
-    if (typeof window !== "undefined" && window.fbq) {
-      window.fbq('track', 'Lead', {
-        content_name: `Hubungi Kami - ${service.title}`,
-        content_category: 'CTA Button',
-      });
-    }
-
-    window.open(
-      `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(
-        service.title
-      )}%2C%20bisa%20dibantu%3F`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  }}
->
-  Hubungi Kami
-</Button>
+                // Open WhatsApp with custom text
+                window.open(
+                  `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(service.title)}%2C%20bisa%20dibantu%3F`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
+              }}
+            >
+              Hubungi Kami
+            </Button>
   </CardFooter>
 </Card>
 
