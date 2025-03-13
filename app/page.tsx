@@ -410,13 +410,32 @@ export default function LandingPage() {
       </div>
       {/* Tombol Cek Semua Layanan */}
 <div className="flex justify-center mt-8">
-  <a
-    href="/layanan"
-    className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2"
-  >
-    Cek Semua Layanan Kami
-    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-  </a>
+<a
+  href="/layanan"
+  className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2"
+  onClick={() => {
+    // Google Pixel Event Tracking
+    if (typeof window !== "undefined" && window.dataLayer) {
+      window.dataLayer.push({
+        event: "cta_button_click",
+        content_name: 'Cek Semua Layanan Kami',
+        content_category: 'CTA Button',
+      });
+    }
+
+    // Meta Pixel Event Tracking
+    if (typeof window !== "undefined" && window.fbq) {
+      window.fbq('track', 'Lead', {
+        content_name: 'Cek Semua Layanan Kami',
+        content_category: 'CTA Button',
+      });
+    }
+  }}
+>
+  Cek Semua Layanan Kami
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+</a>
+
 </div>
     </div>
     <div className="mx-auto grid max-w-5xl gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
@@ -549,21 +568,39 @@ export default function LandingPage() {
     </div>
   </CardContent>
   <CardFooter>
-    <Button
-      className="w-full"
-      onClick={() => {
-        console.log(`Navigating to WhatsApp for: ${service.title}`);
-        window.open(
-          `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(
-            service.title
-          )}%2C%20bisa%20dibantu%3F`,
-          "_blank",
-          "noopener,noreferrer"
-        );
-      }}
-    >
-      Hubungi Kami
-    </Button>
+  <Button
+  className="w-full"
+  onClick={() => {
+    console.log(`Navigating to WhatsApp for: ${service.title}`);
+
+    // Google Pixel Event Tracking
+    if (typeof window !== "undefined" && window.dataLayer) {
+      window.dataLayer.push({
+        event: "cta_button_click",
+        content_name: `Hubungi Kami - ${service.title}`,
+        content_category: "CTA Button",
+      });
+    }
+
+    // Meta Pixel Event Tracking
+    if (typeof window !== "undefined" && window.fbq) {
+      window.fbq('track', 'Lead', {
+        content_name: `Hubungi Kami - ${service.title}`,
+        content_category: 'CTA Button',
+      });
+    }
+
+    window.open(
+      `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(
+        service.title
+      )}%2C%20bisa%20dibantu%3F`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }}
+>
+  Hubungi Kami
+</Button>
   </CardFooter>
 </Card>
 
