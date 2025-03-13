@@ -26,7 +26,7 @@ export default function RootLayout({
     <html lang="id">
       <Head>
         {/* Google Tag Manager */}
-        <GoogleTagManager gtmId="AW-674897184" />
+        <GoogleTagManager gtmId="GTM-NJB6D8GX" />
       </Head>
       <body className={inter.className}>
         <AuthProvider>{children}</AuthProvider>
