@@ -408,6 +408,16 @@ export default function LandingPage() {
           Kami menyediakan berbagai layanan legalitas untuk membantu bisnis Anda berkembang dengan aman dan legal.
         </p>
       </div>
+      {/* Tombol Cek Semua Layanan */}
+<div className="flex justify-center mt-8">
+  <a
+    href="/layanan"
+    className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2"
+  >
+    Cek Semua Layanan Kami
+    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+  </a>
+</div>
     </div>
     <div className="mx-auto grid max-w-5xl gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
       {[
@@ -559,19 +569,6 @@ export default function LandingPage() {
 
       ))}
     </div>
-
-
-{/* Tombol Cek Semua Layanan */}
-<div className="flex justify-center mt-8">
-  <a
-    href="/layanan"
-    className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2"
-  >
-    Cek Semua Layanan Kami
-    <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-  </a>
-</div>
-
   </div>
 </section>
 
