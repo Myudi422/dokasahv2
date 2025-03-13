@@ -29,6 +29,8 @@ export default function RootLayout({
         <GoogleTagManager gtmId="GTM-NJB6D8GX" />
       </Head>
       <body className={inter.className}>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NJB6D8GX"
+height="0" width="0" style={{ display: "none", visibility: "hidden" }}></iframe></noscript>
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>
