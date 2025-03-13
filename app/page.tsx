@@ -445,6 +445,7 @@ export default function LandingPage() {
           price: "Rp 3.500.000",
           description: "Paket pendirian PT dengan kelengkapan legalitas & Bonus",
           popular: true,
+          nego: true,
           reviews: 1955,
           features: [
             "Akta Pendirian (Notaris) & SK Menkumham",
@@ -461,6 +462,7 @@ export default function LandingPage() {
           price: "Rp 459.000",
           description: "Paket pendirian PT Perorangan dengan proses cepat",
           popular: false,
+          nego: true,
           reviews: 699,
           features: [
             "SK Menkumham",
@@ -477,6 +479,7 @@ export default function LandingPage() {
           price: "Rp 3.000.000",
           description: "Paket pendirian CV dengan dokumen lengkap",
           popular: false,
+          nego: true,
           reviews: 444,
           features: [
             "Akta Pendirian (Notaris) & SK Menkumham",
@@ -493,6 +496,7 @@ export default function LandingPage() {
           price: "Rp 3.000.000",
           description: "Paket pendirian Yayasan dengan dokumen lengkap",
           popular: false,
+          nego: true,
           reviews: 367,
           features: [
             "Akta Pendirian (Notaris) & SK Menkumham",
@@ -539,7 +543,15 @@ export default function LandingPage() {
 >
   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 opacity-0 pointer-events-none transition-opacity hover:opacity-100" />
   <CardHeader>
-    {service.popular && <Badge className="w-fit mb-2">Terlaris</Badge>}
+  <div className="flex gap-2">
+  {service.popular && (
+    <Badge className="w-fit mb-2 text-white">Terlaris</Badge>
+  )}
+  {service.nego && (
+    <Badge className="w-fit mb-2 bg-green-500 text-white">Bisa Nego</Badge>
+  )}
+</div>
+
     <CardTitle>{service.title}</CardTitle>
     <div className="flex items-center gap-1">
       {Array(5)

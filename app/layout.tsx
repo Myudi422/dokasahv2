@@ -24,18 +24,19 @@ export default function RootLayout({
   return (
     <html lang="id">
       <Head>
-        {/* Google Tag Manager */}
+        {/* Google Pixel Base Code */}
         <script
           dangerouslySetInnerHTML={{
-            __html: ` 
+            __html: `
               (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
               new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src= 
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','GTM-NJB6D8GX');`
+              })(window,document,'script','dataLayer','YOUR_GOOGLE_PIXEL_ID');
+            `,
           }}
         />
-        
+
         {/* Meta Pixel Base Code */}
         <script
           dangerouslySetInnerHTML={{
@@ -49,7 +50,7 @@ export default function RootLayout({
               }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
               fbq('init', 'YOUR_META_PIXEL_ID'); // Replace with your Meta Pixel ID
               fbq('track', 'PageView');
-            `
+            `,
           }}
         />
 
@@ -77,22 +78,9 @@ export default function RootLayout({
           }}
         />
       </Head>
-      
-      {/* Google Tag Manager noscript */}
-      <body className={inter.className}>
-        <noscript>
-          <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-NJB6D8GX"
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          />
-        </noscript>
-
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </body>
+      <AuthProvider>
+        <body className={inter.className}>{children}</body>
+      </AuthProvider>
       <Analytics />
     </html>
   );
