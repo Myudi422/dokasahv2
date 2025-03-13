@@ -2,6 +2,7 @@ import type React from "react";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
+import { GoogleTagManager } from "@next/third-parties/google";
 import Head from "next/head";
 import "./globals.css";
 
@@ -24,31 +25,12 @@ export default function RootLayout({
   return (
     <html lang="id">
       <Head>
-        {/* Google Tag Manager Script */}
-        <script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=AW-674897184"
-        ></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'AW-674897184');
-            `,
-          }}
-        />
+        {/* Google Tag Manager */}
+        <GoogleTagManager gtmId="GTM-NJB6D8GX" />
       </Head>
       <body className={inter.className}>
-        <noscript>
-          <iframe
-            src="https://www.googletagmanager.com/ns.html?id=AW-674897184"
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
-        </noscript>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NJB6D8GX"
+height="0" width="0" style={{ display: "none", visibility: "hidden" }}></iframe></noscript>
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>
