@@ -1,8 +1,9 @@
 "use client"; // This makes the component a Client Component
 
+import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle, ArrowRight, Star, MessageCircle } from "lucide-react";
-import { sendGTMEvent } from '@next/third-parties/google'
+import { CheckCircle, Star, MessageCircle } from "lucide-react";
+import { sendGTMEvent } from "@next/third-parties/google";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default function ServicesPage() {
-  const services = [
+  const [activeTab, setActiveTab] = useState("legalitas");
+
+  const legalitasServices = [
     {
       title: "Pendirian PT Umum",
       price: "Rp 3.500.000",
@@ -85,6 +88,57 @@ export default function ServicesPage() {
       ],
     },
     {
+      title: "Pendirian Koperasi",
+      price: "Rp 4.800.000",
+      description: "Paket pendirian Koperasi dengan dokumen lengkap",
+      popular: false,
+      nego: true,
+      reviews: 50,
+      features: [
+        "Akta Pendirian (Notaris) & SK Menkumham",
+        "NPWP PT & SKT",
+        "NIB",
+        "Sertifikasi standar (Tergantung usaha)",
+        "Tata Ruang, SPPL & K3L",
+        "Username dan password OSS",
+        "Design Logo, Kop surat, Kartu nama",
+      ],
+    },
+    {
+      title: "Pendirian Perkumpulan",
+      price: "Rp 3.200.000",
+      description: "Paket pendirian Perkumpulan dengan dokumen lengkap",
+      popular: false,
+      nego: true,
+      reviews: 50,
+      features: [
+        "Akta Pendirian (Notaris) & SK Menkumham",
+        "NPWP PT & SKT",
+        "NIB",
+        "Sertifikasi standar (Tergantung usaha)",
+        "Tata Ruang, SPPL & K3L",
+        "Username dan password OSS",
+        "Design Logo, Kop surat, Kartu nama",
+      ],
+    },
+    {
+      title: "Pendirian Figma",
+      price: "Rp 3.500.000",
+      description: "Paket pendirian Figma dengan dokumen lengkap",
+      popular: false,
+      nego: true,
+      reviews: 50,
+      features: [
+        "Akta Pendirian (Notaris) & SK Menkumham",
+        "NPWP PT & SKT",
+        "NIB",
+        "Sertifikasi standar (Tergantung usaha)",
+        "Tata Ruang, SPPL & K3L",
+        "Username dan password OSS",
+        "Design Logo, Kop surat, Kartu nama",
+      ],
+    },
+    {
       title: "NIB PERORANGAN",
       price: "Rp 150.000",
       description: "Layanan pengurusan izin usaha NIB perorangan",
@@ -111,6 +165,25 @@ export default function ServicesPage() {
         "Tata Ruang, K3L & SPPL",
         "Username dan password untuk cek keaslian legalitas",
         "Kode Akses Masuk Aplikasi Perizinan OSS",
+      ],
+    },
+  ];
+
+  const websiteServices = [
+    {
+      title: "Paket Pembuatan Website",
+      price: "Rp 600.000,00",
+      description: "Paket pembuatan website Standart",
+      popular: true,
+      nego: false,
+      reviews: 0,
+      features: [
+        "Include Website domain .com",
+        "Gratis server 1 tahun",
+        "Gratis biaya perawatan & konsultasi",
+        "Bebas Pilih Template Premium.",
+        "Bebas pilih niche, (halaman 2-5)",
+        "Web menggunakan wordpress.",
       ],
     },
   ];
@@ -168,79 +241,157 @@ export default function ServicesPage() {
                   Layanan Dokasah
                 </h2>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Kami menyediakan berbagai layanan legalitas untuk membantu bisnis Anda berkembang dengan aman dan legal.
+                  Kami menyediakan berbagai layanan untuk membantu bisnis Anda berkembang dengan aman dan legal.
                 </p>
               </div>
-              {/* Tombol Cek Semua Layanan tidak ditampilkan karena halaman ini khusus untuk Layanan */}
-            </div>
-            <div className="mx-auto grid max-w-5xl gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
-              {services.map((service, i) => (
-                <Card
-                  key={i}
-                  className="relative overflow-hidden border bg-background/50 backdrop-blur-sm transition-all hover:shadow-md"
+              {/* Tab Bar */}
+              <div className="flex justify-center mt-6 space-x-4">
+                <button
+                  onClick={() => setActiveTab("legalitas")}
+                  className={`px-4 py-2 border-b-2 transition-colors ${
+                    activeTab === "legalitas"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground"
+                  }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 opacity-0 pointer-events-none transition-opacity hover:opacity-100" />
-                  <CardHeader>
-                    <div className="flex gap-2">
-                      {service.popular && (
-                        <Badge className="w-fit mb-2 text-white">Terlaris</Badge>
-                      )}
-                      {service.nego && (
-                        <Badge className="w-fit mb-2 bg-green-500 text-white">Bisa Nego</Badge>
-                      )}
-                    </div>
-                    <CardTitle>{service.title}</CardTitle>
-                    <div className="flex items-center gap-1">
-                      {Array(5)
-                        .fill(0)
-                        .map((_, i) => (
-                          <Star key={i} className="size-4 fill-yellow-400 text-yellow-400" />
-                        ))}
-                      <span className="text-sm text-muted-foreground">
-                        ({service.reviews} Review)
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <span className="text-3xl font-bold">{service.price}</span>
-                    </div>
-                    <p className="text-muted-foreground">{service.description}</p>
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Termasuk:</h4>
-                      <ul className="space-y-1">
-                        {service.features.map((item, i) => (
-                          <li key={i} className="flex items-center gap-2">
-                            <CheckCircle className="size-4 text-primary" />
-                            <span className="text-sm">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <button
-                      className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
-                      onClick={() => {
-                        sendGTMEvent({
-                          event: "CTA",
-                          value: `Hubungi Kami - ${service.title}`,
-                        });
-                        window.open(
-                          `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(
-                            service.title
-                          )}`,
-                          "_blank",
-                          "noopener,noreferrer"
-                        );
-                      }}
-                    >
-                      Hubungi Kami
-                    </button>
-                  </CardFooter>
-                </Card>
-              ))}
+                  Legalitas
+                </button>
+                <button
+                  onClick={() => setActiveTab("website")}
+                  className={`px-4 py-2 border-b-2 transition-colors ${
+                    activeTab === "website"
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground"
+                  }`}
+                >
+                  Website
+                </button>
+              </div>
             </div>
+            {/* Konten berdasarkan tab */}
+            {activeTab === "legalitas" ? (
+              <div className="mx-auto grid max-w-5xl gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
+                {legalitasServices.map((service, i) => (
+                  <Card
+                    key={i}
+                    className="relative overflow-hidden border bg-background/50 backdrop-blur-sm transition-all hover:shadow-md"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 opacity-0 pointer-events-none transition-opacity hover:opacity-100" />
+                    <CardHeader>
+                      <div className="flex gap-2">
+                        {service.popular && (
+                          <Badge className="w-fit mb-2 text-white">Terlaris</Badge>
+                        )}
+                        {service.nego && (
+                          <Badge className="w-fit mb-2 bg-green-500 text-white">Bisa Nego</Badge>
+                        )}
+                      </div>
+                      <CardTitle>{service.title}</CardTitle>
+                      {service.reviews > 0 && (
+                        <div className="flex items-center gap-1">
+                          {Array(5)
+                            .fill(0)
+                            .map((_, i) => (
+                              <Star key={i} className="size-4 fill-yellow-400 text-yellow-400" />
+                            ))}
+                          <span className="text-sm text-muted-foreground">
+                            ({service.reviews} Review)
+                          </span>
+                        </div>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <span className="text-3xl font-bold">{service.price}</span>
+                      </div>
+                      <p className="text-muted-foreground">{service.description}</p>
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Termasuk:</h4>
+                        <ul className="space-y-1">
+                          {service.features.map((item, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <CheckCircle className="size-4 text-primary" />
+                              <span className="text-sm">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <button
+                        className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
+                        onClick={() => {
+                          sendGTMEvent({
+                            event: "CTA",
+                            value: `Hubungi Kami - ${service.title}`,
+                          });
+                          window.open(
+                            `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(
+                              service.title
+                            )}`,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }}
+                      >
+                        Hubungi Kami
+                      </button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="mx-auto grid max-w-5xl gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
+                {websiteServices.map((service, i) => (
+                  <Card
+                    key={i}
+                    className="relative overflow-hidden border bg-background/50 backdrop-blur-sm transition-all hover:shadow-md"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 opacity-0 pointer-events-none transition-opacity hover:opacity-100" />
+                    <CardHeader>
+                      <CardTitle>{service.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <span className="text-3xl font-bold">{service.price}</span>
+                      </div>
+                      <p className="text-muted-foreground">{service.description}</p>
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Termasuk:</h4>
+                        <ul className="space-y-1">
+                          {service.features.map((item, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <CheckCircle className="size-4 text-primary" />
+                              <span className="text-sm">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </CardContent>
+                    <CardFooter>
+                      <button
+                        className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
+                        onClick={() => {
+                          sendGTMEvent({
+                            event: "CTA",
+                            value: `Hubungi Kami - ${service.title}`,
+                          });
+                          window.open(
+                            `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(
+                              service.title
+                            )}`,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }}
+                      >
+                        Hubungi Kami
+                      </button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>
