@@ -2,7 +2,7 @@ import type React from "react";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
-import { GoogleTagManager } from "@next/third-parties/google";
+import Script from "next/script";
 import Head from "next/head";
 import "./globals.css";
 
@@ -25,12 +25,20 @@ export default function RootLayout({
   return (
     <html lang="id">
       <Head>
-        {/* Google Tag Manager */}
-        <GoogleTagManager gtmId="GTM-NJB6D8GX" />
+        <Script
+          strategy="afterInteractive"
+          src="https://www.googletagmanager.com/gtag/js?id=AW-674897184"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-674897184');
+          `}
+        </Script>
       </Head>
       <body className={inter.className}>
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NJB6D8GX"
-height="0" width="0" style={{ display: "none", visibility: "hidden" }}></iframe></noscript>
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>
