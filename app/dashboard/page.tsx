@@ -17,6 +17,7 @@ import {
   ChevronUp,
   ChevronDown
 } from 'lucide-react'
+
 import CreateFormModal from "@/components/CreateFormModal"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -31,6 +32,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -39,6 +47,7 @@ import { useAuth, useAuthRedirect } from "@/components/AuthContext"
 export default function DashboardPage() {
   const { user, isAuthLoaded, token, setToken } = useAuth();
   const router = useRouter();
+  const [selectedCase, setSelectedCase] = React.useState(null);
   const pathname = usePathname();
   const [recentCases, setRecentCases] = React.useState([]);
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -364,82 +373,84 @@ const handleChangeStatus = async (slug, newStatus) => {
                     <CardDescription>Terlampir formulir yang tersedia.</CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
-  <div className="overflow-x-auto">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead onClick={() => handleSort('status')} className="cursor-pointer select-none">
-            Status {sortConfig.key === 'status' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-          </TableHead>
-          <TableHead onClick={() => handleSort('client')} className="cursor-pointer select-none">
-            Email Client {sortConfig.key === 'client' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-          </TableHead>
-          <TableHead className="hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort('id')}>
-            Id {sortConfig.key === 'id' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-          </TableHead>
-          <TableHead className="hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort('type')}>
-            Tipe {sortConfig.key === 'type' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-          </TableHead>
-          <TableHead className="hidden md:table-cell cursor-pointer select-none" onClick={() => handleSort('updatedAt')}>
-            Update terbaru {sortConfig.key === 'updatedAt' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-          </TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {paginatedCases.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={6} className="text-center">Tidak ada formulir</TableCell>
-          </TableRow>
-        ) : (
-          paginatedCases.map((caseItem) => (
-            <TableRow key={caseItem.id}>
-              <TableCell>
-                <Badge variant={getStatusVariant(caseItem.status)}>{caseItem.status}</Badge>
-              </TableCell>
-              <TableCell>{caseItem.client}</TableCell>
-              <TableCell className="hidden md:table-cell font-medium">{caseItem.number}</TableCell>
-              <TableCell className="hidden md:table-cell">{caseItem.type}</TableCell>
-              <TableCell className="hidden md:table-cell">{caseItem.deadline}</TableCell>
-              <TableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                      <span className="sr-only">Aksi</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetail(caseItem.slug)}>
-                      Lihat Detail
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push(`/filemanager/${caseItem.slug}`)}>
-                      Tambahkan Dokumen
-                    </DropdownMenuItem>
-                    {user?.role === 'admin' && (
-                      <>
-                        <DropdownMenuSeparator />
-                        {["draft", "submitted", "proses", "review", "selesai"].map((s) => {
-                          if (s === caseItem.status.toLowerCase()) return null;
-                          return (
-                            <DropdownMenuItem key={s} onClick={() => handleChangeStatus(caseItem.slug, s)}>
-                              Ganti ke {s.charAt(0).toUpperCase() + s.slice(1)}
-                            </DropdownMenuItem>
-                          );
-                        })}
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  </div>
-</CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead onClick={() => handleSort('id')} className="cursor-pointer select-none">
+                            Id {sortConfig.key === 'id' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('client')} className="cursor-pointer select-none">
+                            Email Client {sortConfig.key === 'client' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('type')} className="hidden md:table-cell cursor-pointer select-none">
+                            Tipe {sortConfig.key === 'type' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('status')} className="hidden md:table-cell cursor-pointer select-none">
+                            Status {sortConfig.key === 'status' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead onClick={() => handleSort('updatedAt')} className="hidden md:table-cell cursor-pointer select-none">
+                            Update terbaru {sortConfig.key === 'updatedAt' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
+                          </TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedCases.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center">tidak ada formulir</TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedCases.map((caseItem) => (
+                            <TableRow key={caseItem.id}>
+                              <TableCell className="font-medium">{caseItem.number}</TableCell>
+                              <TableCell>{caseItem.client}</TableCell>
+                              <TableCell className="hidden md:table-cell">{caseItem.type}</TableCell>
+                              <TableCell className="hidden md:table-cell">
+                                <Badge variant={getStatusVariant(caseItem.status)}>{caseItem.status}</Badge>
+                              </TableCell>
+                              <TableCell className="hidden md:table-cell">{caseItem.deadline}</TableCell>
+                              <TableCell className="text-right">
+                              <DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="ghost" size="icon">
+      <MoreHorizontal className="h-4 w-4" />
+      <span className="sr-only">aksi</span>
+    </Button>
+  </DropdownMenuTrigger>
+ <DropdownMenuContent align="end">
+  <DropdownMenuItem onClick={() => setSelectedCase(caseItem)}>
+    Lihat Info
+  </DropdownMenuItem>
+  <DropdownMenuItem onClick={() => handleViewDetail(caseItem.slug)}>
+    Lihat Form
+  </DropdownMenuItem>
+    <DropdownMenuItem onClick={() => router.push(`/filemanager/${caseItem.slug}`)}>
+  Tambahkan Dokumen
+</DropdownMenuItem>
+    {/* Opsi status untuk admin */}
+    {user?.role === 'admin' && (
+      <>
+        <DropdownMenuSeparator />
+        {["draft", "submitted", "proses", "review", "selesai"].map((s) => {
+          if (s === caseItem.status.toLowerCase()) return null;
+          return (
+            <DropdownMenuItem key={s} onClick={() => handleChangeStatus(caseItem.slug, s)}>
+              Ganti ke {s.charAt(0).toUpperCase() + s.slice(1)}
+            </DropdownMenuItem>
+          );
+        })}
+      </>
+    )}
+  </DropdownMenuContent>
+</DropdownMenu>
 
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
                   <CardFooter className="flex justify-between border-t p-4">
                     <Button variant="outline" onClick={handlePrev} disabled={currentPage === 1}>
                       Previous
@@ -454,6 +465,54 @@ const handleChangeStatus = async (slug, newStatus) => {
           </div>
         </main>
       </div>
+      {selectedCase && (
+  <Dialog open={!!selectedCase} onOpenChange={() => setSelectedCase(null)}>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Detail Formulir</DialogTitle>
+        <DialogDescription>
+          Informasi lengkap untuk {selectedCase.number}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <span className="text-sm text-muted-foreground col-span-1">
+            Nomor
+          </span>
+          <span className="col-span-3">{selectedCase.number}</span>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <span className="text-sm text-muted-foreground col-span-1">
+            Client
+          </span>
+          <span className="col-span-3 break-all">{selectedCase.client}</span>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <span className="text-sm text-muted-foreground col-span-1">
+            Tipe
+          </span>
+          <span className="col-span-3">{selectedCase.type}</span>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <span className="text-sm text-muted-foreground col-span-1">
+            Status
+          </span>
+          <div className="col-span-3">
+            <Badge variant={getStatusVariant(selectedCase.status)}>
+              {selectedCase.status}
+            </Badge>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <span className="text-sm text-muted-foreground col-span-1">
+            Terakhir Update
+          </span>
+          <span className="col-span-3">{selectedCase.deadline}</span>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+)}
     </div>
   );
 }
