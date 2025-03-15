@@ -2,8 +2,7 @@ import type React from "react";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/components/AuthContext";
 import { Analytics } from "@vercel/analytics/react";
-import Script from "next/script";
-import Head from "next/head";
+import { GoogleTagManager } from "@next/third-parties/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -24,25 +23,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <Head>
-        {/* Google Tag Script */}
-        <Script
-          strategy="afterInteractive"
-          src={`https://www.googletagmanager.com/gtag/js?id=AW-674897184`}
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'AW-674897184', { debug_mode: true });
-          `}
-        </Script>
-      </Head>
       <body className={inter.className}>
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>
+      <GoogleTagManager gtmId="GTM-NJB6D8GX" />
     </html>
   );
 }
