@@ -413,7 +413,7 @@ export default function LandingPage() {
 <a
     href="/layanan"
     className="px-8 py-3 text-lg font-semibold bg-primary text-white rounded-md shadow-md hover:bg-primary/80 flex items-center gap-2 group"
-    onClick={() => sendGTMEvent({ event: "buttonClicked", value: "Cek Semua Layanan Kami" })}
+    onClick={() => sendGTMEvent({ event: "Layanan", value: "Cek Semua Layanan Kami" })}
   >
     Cek Semua Layanan Kami
     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -566,7 +566,7 @@ export default function LandingPage() {
   <button
         className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/80"
         onClick={() => {
-          sendGTMEvent({ event: "buttonClicked", value: `Hubungi Kami - ${service.title}` });
+          sendGTMEvent({ event: "CTA", value: `Hubungi Kami - ${service.title}` });
           window.open(
             `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(service.title)}`,
             "_blank",
