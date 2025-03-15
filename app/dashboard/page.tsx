@@ -37,6 +37,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const [recentCases, setRecentCases] = React.useState([]);
   const [currentPage, setCurrentPage] = React.useState(1);
   const itemsPerPage = 7;
+  const [deleteConfirm, setDeleteConfirm] = React.useState(null);
   
   // State untuk sorting
   const [sortConfig, setSortConfig] = React.useState({ key: '', direction: 'ascending' });
@@ -417,7 +419,15 @@ const handleChangeStatus = async (slug, newStatus) => {
       <span className="sr-only">aksi</span>
     </Button>
   </DropdownMenuTrigger>
- <DropdownMenuContent align="end">
+  <DropdownMenuContent align="end">
+  {user?.role === 'admin' && (
+    <DropdownMenuItem 
+      className="text-destructive"
+      onClick={() => setDeleteConfirm(caseItem)}
+    >
+      Hapus Formulir
+    </DropdownMenuItem>
+  )}
   <DropdownMenuItem onClick={() => setSelectedCase(caseItem)}>
     Lihat Info
   </DropdownMenuItem>
@@ -513,6 +523,58 @@ const handleChangeStatus = async (slug, newStatus) => {
     </DialogContent>
   </Dialog>
 )}
+
+{deleteConfirm && (
+  <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Konfirmasi Hapus</DialogTitle>
+        <DialogDescription>
+          Apakah Anda yakin ingin menghapus formulir {deleteConfirm.number}?
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <p className="text-sm text-destructive">
+          Aksi ini akan menghapus semua data terkait formulir ini secara permanen!
+        </p>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+          Batal
+        </Button>
+        <Button 
+          variant="destructive"
+          onClick={async () => {
+            try {
+              const response = await fetch(
+                `https://dev.dokasah.web.id/api/forms/${deleteConfirm.slug}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+              
+              if (response.ok) {
+                fetchForms();
+                fetchStatusCounts();
+                setDeleteConfirm(null);
+              } else {
+                console.error('Gagal menghapus formulir');
+              }
+            } catch (error) {
+              console.error('Error:', error);
+            }
+          }}
+        >
+          Hapus Permanen
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+)}
+
     </div>
   );
 }
