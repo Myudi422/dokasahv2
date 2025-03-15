@@ -349,6 +349,14 @@ export default function ServicesPage() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 opacity-0 pointer-events-none transition-opacity hover:opacity-100" />
                     <CardHeader>
+                    <div className="flex gap-2">
+                        {service.popular && (
+                          <Badge className="w-fit mb-2 text-white">Terlaris</Badge>
+                        )}
+                        {service.nego && (
+                          <Badge className="w-fit mb-2 bg-green-500 text-white">Bisa Nego</Badge>
+                        )}
+                      </div>
                       <CardTitle>{service.title}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
