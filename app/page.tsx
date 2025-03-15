@@ -43,19 +43,31 @@ export default function LandingPage() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
-          <Link href="/dashboard">
-              <Button variant="outline">Login</Button>
-            </Link>
-            <Button
-  onClick={() =>
+          <Link
+  href="/dashboard"
+  onClick={() => sendGTMEvent({ event: "login-cta", value: "Login Button Clicked" })}
+>
+  <Button variant="outline">Login</Button>
+</Link>
+
+<Button
+  onClick={() => {
+    sendGTMEvent({
+      event: "cta-header",
+      value: "Konsultasi Layanan Dokasah",
+    });
+
     window.open(
       "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
-    )
-  }
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }}
   className="group"
 >
   <MessageCircle className="h-4 w-4" /> {/* Ikon Telepon */}
 </Button>
+
           </div>
         </div>
       </header>
@@ -301,7 +313,7 @@ export default function LandingPage() {
                 <Badge className="bg-primary/10 text-primary border-primary/20">Mengapa Memilih Kami</Badge>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Keunggulan Layanan Kami</h2>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Kami menyediakan layanan pendirian PT dengan proses yang transparan, cepat, dan sesuai dengan
+                  Kami menyediakan layanan pendirian legalitas dengan proses yang transparan, cepat, dan sesuai dengan
                   peraturan yang berlaku.
                 </p>
               </div>
@@ -367,7 +379,7 @@ export default function LandingPage() {
                   </h2>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl/relaxed">
                     Kami adalah tim profesional yang berpengalaman dalam bidang legalitas perusahaan. Kami telah
-                    membantu ratusan perusahaan untuk mendirikan PT dengan proses yang mudah dan cepat.
+                    membantu ratusan perusahaan untuk mendirikan legalitas dengan proses yang mudah dan cepat.
                   </p>
                 </div>
                 <ul className="grid gap-2">
@@ -476,7 +488,7 @@ export default function LandingPage() {
         },
         {
           title: "Pendirian Yayasan",
-          price: "Rp 3.000.000",
+          price: "Rp 3.500.000",
           description: "Paket pendirian Yayasan dengan dokumen lengkap",
           popular: false,
           nego: true,
@@ -606,19 +618,19 @@ export default function LandingPage() {
               {[
                 {
                   name: "Budi Santoso",
-                  company: "PT Maju Bersama",
+                  company: "PT Sukses Mitra Jaya",
                   testimonial:
                     "Proses pendirian PT sangat cepat dan profesional. Semua dokumen lengkap dan sesuai dengan peraturan yang berlaku.",
                 },
                 {
                   name: "Dewi Lestari",
-                  company: "PT Sukses Mandiri",
+                  company: "PT Kenari Indo Farma",
                   testimonial:
                     "Sangat puas dengan layanan yang diberikan. Tim sangat responsif dan membantu dari awal hingga akhir proses.",
                 },
                 {
                   name: "Ahmad Hidayat",
-                  company: "PT Karya Utama",
+                  company: "CV Karya Bangsa Utama",
                   testimonial:
                     "Harga transparan dan tidak ada biaya tersembunyi. Proses cepat dan dokumen lengkap. Sangat direkomendasikan!",
                 },
@@ -667,29 +679,37 @@ export default function LandingPage() {
 
       {/* Buttons */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-        <Button
-          size="lg"
-          className="group"
-          onClick={() =>
-            window.open(
-              "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
-            )
-          }
-        >
-          Hubungi Kami
-          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-        </Button>
-        <Button
-          size="lg"
-          variant="outline"
-          onClick={() =>
-            window.open(
-              "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20gratis%20tentang%20pendirian%20PT%2C%20bisa%20dibantu%3F",
-            )
-          }
-        >
-          Konsultasi Gratis
-        </Button>
+      <Button
+  size="lg"
+  className="group"
+  onClick={() => {
+    sendGTMEvent({ event: "konsultasi-cta", value: "Hubungi Kami - Legalitas" });
+
+    window.open(
+      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }}
+>
+  Hubungi Kami
+  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+</Button>
+<Button
+  size="lg"
+  variant="outline"
+  onClick={() => {
+    sendGTMEvent({ event: "konsultasi-gratis", value: "Konsultasi Gratis - Legalitas" });
+
+    window.open(
+      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20gratis%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }}
+>
+  Konsultasi Gratis
+</Button>
       </div>
     </div>
   </div>
@@ -710,7 +730,7 @@ export default function LandingPage() {
               </p>
               <div className="flex gap-2">
                 <Link
-                  href="#"
+                  href="https://www.facebook.com/profile.php?id=100095648193688"
                   className="size-8 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80"
                 >
                   <svg
@@ -751,49 +771,14 @@ export default function LandingPage() {
                   </svg>
                   <span className="sr-only">Instagram</span>
                 </Link>
-                <Link
-                  href="#"
-                  className="size-8 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="lucide lucide-twitter"
-                  >
-                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                  </svg>
-                  <span className="sr-only">Twitter</span>
-                </Link>
               </div>
             </div>
             <div className="space-y-3">
-              <h3 className="font-medium">Layanan</h3>
+              <h3 className="font-medium">Layanan Kami</h3>
               <ul className="space-y-1">
                 <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Pendirian PT
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Perubahan PT
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Perizinan Usaha
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Konsultasi Legalitas
+                  <Link href="/layanan" className="text-sm text-muted-foreground hover:text-foreground">
+                    Semua Layanan Kami
                   </Link>
                 </li>
               </ul>
@@ -802,7 +787,7 @@ export default function LandingPage() {
               <h3 className="font-medium">Perusahaan</h3>
               <ul className="space-y-1">
                 <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+                  <Link href="/tentang-kami" className="text-sm text-muted-foreground hover:text-foreground">
                     Tentang Kami
                   </Link>
                 </li>
@@ -870,7 +855,7 @@ export default function LandingPage() {
                     <rect width="20" height="16" x="2" y="4" rx="2" />
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                   </svg>
-                  <span>cs@dokasah.web.id</span>
+                  <span>dokasahcare@gmail.com</span>
                 </li>
               </ul>
             </div>
