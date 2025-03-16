@@ -150,51 +150,38 @@ const generatePDF = async () => {
   if (!formConfig) return;
   const doc = new jsPDF();
 
-  const leftMargin = 10, rightMargin = 10, topMargin = 10, bottomMargin = 10;
+  // Margin disesuaikan agar konten tidak menimpa area header & footer pada template
+  const leftMargin = 20, rightMargin = 20, topMargin = 60, bottomMargin = 30;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const effectiveWidth = pageWidth - leftMargin - rightMargin;
   let y = topMargin;
 
-  // **Judul Form**
-  doc.setFontSize(16);
-  const titleLines = doc.splitTextToSize(formConfig.title, effectiveWidth);
-  titleLines.forEach((line) => {
-    if (y > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
-    doc.text(line, leftMargin, y);
-    y += 10;
-  });
-  y += 5;
+  // URL template PNG full A4
+  const templateUrl = "https://file.ccgnimex.my.id/file/ccgnimex/dokasah/berkas/Branding%20Dokasah/surat-2.png";
 
-  // **Fungsi untuk Kompresi Gambar dan Konversi ke Base64**
-  const compressImage = async (imageUrl, maxWidth = 1080) => {
+  // Fungsi untuk load, mengkompres, dan mengubah gambar ke Base64
+  // Tambahan parameter quality (default 0.7), template cover bisa pakai quality 0.9
+  const compressImage = async (imageUrl, maxWidth = 1080, quality = 0.9) => {
     try {
       const img = new Image();
-      img.crossOrigin = "Anonymous"; // Hindari masalah CORS
+      img.crossOrigin = "Anonymous";
       img.src = imageUrl;
-  
       return new Promise((resolve) => {
         img.onload = () => {
           let width = img.width;
           let height = img.height;
-  
-          // **Pastikan gambar tidak melebihi lebar canvas**
           if (width > maxWidth) {
             const scaleFactor = maxWidth / width;
             width = maxWidth;
             height = height * scaleFactor;
           }
-  
           const canvas = document.createElement("canvas");
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext("2d");
-  
-          // **Gambar ulang dengan ukuran yang sesuai**
           ctx.drawImage(img, 0, 0, width, height);
-  
-          // **Kompresi ke format JPEG dengan kualitas tinggi (90%)**
-          resolve(canvas.toDataURL("image/jpeg", 0.7));
+          resolve({ dataUrl: canvas.toDataURL("image/jpeg", quality), width: img.width, height: img.height });
         };
       });
     } catch (error) {
@@ -202,14 +189,45 @@ const generatePDF = async () => {
       return null;
     }
   };
-  
+
+  // Kompres template cover dengan kualitas 0.9 agar file size tidak bengkak tapi tetap tajam
+  const templateImageObj = await compressImage(templateUrl, 1080, 1.0);
+  const templateImage = templateImageObj ? templateImageObj.dataUrl : null;
+
+  // Fungsi untuk menambahkan template sebagai latar belakang di halaman saat ini
+  const addTemplate = () => {
+    if (templateImage) {
+      // Gambar template akan memenuhi seluruh halaman
+      doc.addImage(templateImage, "JPEG", 0, 0, pageWidth, pageHeight);
+    }
+  };
+
+  // Tambahkan template ke halaman pertama
+  addTemplate();
+
+  // **Judul Form**
+  doc.setFontSize(16);
+  const titleLines = doc.splitTextToSize(formConfig.title, effectiveWidth);
+  titleLines.forEach((line) => {
+    if (y > pageHeight - bottomMargin) {
+      doc.addPage();
+      addTemplate();
+      y = topMargin;
+    }
+    doc.text(line, leftMargin, y);
+    y += 10;
+  });
+  y += 5;
+
+  // Faktor konversi pixel ke mm (A4: 595px -> 210mm)
+  const pxToMm = pageWidth / 595;
 
   // **Isi Form**
   doc.setFontSize(12);
   for (const field of formConfig.fields) {
     let value = formData[field.name] || '';
 
-    // **Jika Field adalah Array (contoh: Pengurus)**
+    // Jika field adalah array (contoh: Pengurus)
     if (Array.isArray(value)) {
       doc.text(`${field.label}:`, leftMargin, y);
       y += 5;
@@ -217,22 +235,16 @@ const generatePDF = async () => {
         if (typeof item === 'object' && item !== null) {
           for (const [key, val] of Object.entries(item)) {
             if (typeof val === "string" && val.match(/\.(jpeg|jpg|png|gif)$/i)) {
-              // **Kompresi gambar sebelum dimasukkan**
-              const compressedImage = await compressImage(val);
-              if (compressedImage) {
-                const imgWidth = 100; // Lebih kecil agar lebih rapi
-                const imgHeight = imgWidth * 0.75; // Menjaga aspek rasio
-
-                if (y + imgHeight > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
-
-                doc.text(`- ${key}:`, leftMargin, y);
-                y += 5;
-                doc.addImage(compressedImage, 'JPEG', leftMargin, y, imgWidth, imgHeight);
-                y += imgHeight + 10;
-              } else {
-                doc.text(`- ${key}: (Gagal Memuat Gambar)`, leftMargin, y);
-                y += 10;
-              }
+              // Untuk field foto, sisipkan link "klik disini" dengan target new tab
+              const labelText = `- ${key}: `;
+              doc.text(labelText + "klik disini", leftMargin, y);
+              doc.textWithLink(
+                "klik disini",
+                leftMargin + doc.getTextWidth(labelText),
+                y,
+                { url: val, target: '_blank' }
+              );
+              y += 10;
             } else {
               doc.text(`- ${key}: ${val}`, leftMargin, y);
               y += 5;
@@ -247,39 +259,39 @@ const generatePDF = async () => {
       continue;
     }
 
-    // **Jika Field adalah Gambar**
+    // Jika Field adalah Gambar (non-array)
     if (typeof value === "string" && value.match(/\.(jpeg|jpg|gif|png)$/i)) {
-      const compressedImage = await compressImage(value);
-      if (compressedImage) {
-        const imgWidth = 50;
-        const imgHeight = imgWidth * 0.75; // Menjaga aspek rasio
-
-        if (y + imgHeight > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
-
-        doc.text(`${field.label}:`, leftMargin, y);
-        y += 10;
-        doc.addImage(compressedImage, 'JPEG', leftMargin, y, imgWidth, imgHeight);
-        y += imgHeight + 10;
-      } else {
-        doc.text(`${field.label}: (Gagal Memuat Gambar)`, leftMargin, y);
-        y += 10;
-      }
+      const labelText = `${field.label}: `;
+      doc.text(labelText + "klik disini", leftMargin, y);
+      doc.textWithLink(
+        "klik disini",
+        leftMargin + doc.getTextWidth(labelText),
+        y,
+        { url: value, target: '_blank' }
+      );
+      y += 10;
       continue;
     }
 
-    // **Default (Teks Normal)**
+    // Default: Teks Normal
     const text = `${field.label}: ${value}`;
     const textLines = doc.splitTextToSize(text, effectiveWidth);
     textLines.forEach((line) => {
-      if (y > pageHeight - bottomMargin) { doc.addPage(); y = topMargin; }
+      if (y > pageHeight - bottomMargin) {
+        doc.addPage();
+        addTemplate();
+        y = topMargin;
+      }
       doc.text(line, leftMargin, y);
       y += 10;
     });
   }
 
-  // **Simpan PDF**
+  // Simpan PDF
   doc.save(`${formConfig.title}.pdf`);
 };
+
+
 
 
   
