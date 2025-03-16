@@ -619,13 +619,15 @@ const generatePDF = async () => {
                       return null;
                     })}
                     <Button
-                      type="button"
-                      onClick={() => removeGroupItem(field.name, index)}
-                      variant="outline"
-                      className="mt-2"
-                    >
-                      Hapus
-                    </Button>
+  type="button"
+  onClick={() => removeGroupItem(field.name, index)}
+  variant="outline"
+  className="mt-2"
+  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
+>
+  Hapus
+</Button>
+
                   </div>
                 ))}
                 <Button
@@ -772,9 +774,10 @@ const generatePDF = async () => {
             {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
           </Button>
           {/* Kondisi untuk Generate PDF */}
-{submissionStatus !== 'draft' && (
+          {submissionStatus !== 'draft' && user?.role === 'admin' && (
   <Button onClick={generatePDF}>Generate PDF</Button>
 )}
+
         </div>
       </form>
 
@@ -787,7 +790,6 @@ const generatePDF = async () => {
       </DialogDescription>
     </DialogHeader>
     <div className="flex justify-end gap-4">
-      <Button onClick={generatePDF}>Generate PDF</Button>
       <Button onClick={() => setShowPopup(false)}>Tutup</Button>
     </div>
   </DialogContent>
