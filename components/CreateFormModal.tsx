@@ -5,10 +5,77 @@ import { Button } from "@/components/ui/button";
 import { Plus } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 
+// Daftar opsi formulir dengan value dan label yang sesuai.
+const formOptions = [
+  { value: "pt_perorangan", label: "Pendirian PT Perorangan" },
+  { value: "yayasan", label: "Pendirian Yayasan" },
+  { value: "pt_umum", label: "Pendirian PT UMUM" },
+  { value: "perkumpulan", label: "Pendirian Perkumpulan" },
+  { value: "koperasi", label: "Pendirian Koperasi" },
+  { value: "cv", label: "Pendirian CV" },
+  { value: "figma", label: "Pendirian Figma" },
+  { value: "npwp_pribadi", label: "Pembuatan NPWP PRIBADI" },
+  { value: "npwp_badan", label: "Pembuatan NPWP Badan" },
+  { value: "nib_pribadi", label: "Pembuatan NIB Pribadi" },
+  { value: "nib_badan", label: "Pembuatan NIB Badan" }
+];
+
+// Komponen dropdown dengan fitur pencarian dan auto-scroll
+function SearchableDropdown({ options, selected, onChange }) {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <button 
+         type="button" 
+         className="w-full px-3 py-2 border rounded-md text-left"
+         onClick={() => setIsOpen(!isOpen)}
+      >
+         {selected ? options.find(option => option.value === selected)?.label : 'Pilih jenis formulir'}
+      </button>
+      {isOpen && (
+         <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+           <input
+             type="text"
+             placeholder="Cari..."
+             className="w-full px-3 py-2 border-b"
+             value={query}
+             onChange={(e) => setQuery(e.target.value)}
+           />
+           <div className="max-h-60 overflow-auto">
+             {filteredOptions.length === 0 ? (
+               <div className="p-2 text-sm text-gray-500">Tidak ada hasil</div>
+             ) : (
+               filteredOptions.map((option) => (
+                 <div
+                   key={option.value}
+                   className="p-2 hover:bg-gray-200 cursor-pointer"
+                   onClick={() => {
+                     onChange(option.value);
+                     setIsOpen(false);
+                     setQuery('');
+                   }}
+                 >
+                   {option.label}
+                 </div>
+               ))
+             )}
+           </div>
+         </div>
+      )}
+    </div>
+  );
+}
+
 export default function CreateFormModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState('');
-  const [formType, setFormType] = useState('pt_perorangan');
+  const [formType, setFormType] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formLink, setFormLink] = useState(null);
   const { token } = useAuth();
@@ -75,25 +142,13 @@ export default function CreateFormModal() {
             </div>
             <div>
               <label className="block mb-2 text-sm">Jenis Formulir</label>
-              <select 
-                value={formType}
-                onChange={(e) => setFormType(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-              >
-                <option value="pt_perorangan">Pendirian PT Perorangan</option>
-                <option value="yayasan">Pendirian Yayasan</option>
-                <option value="pt_umum">Pendirian PT UMUM</option>
-                <option value="pt_umum">Pendirian Perkumpulan</option>
-                <option value="pt_umum">Pendirian Koperasi</option>
-                <option value="pt_umum">Pendirian CV</option>
-                <option value="pt_umum">Pendirian Figma</option>
-                <option value="npwp_pribadi">Pembuatan NPWP PRIBADI</option>
-                <option value="npwp_badan">Pembuatan NPWP Badan</option>
-                <option value="npwp_badan">Pembuatan NIB Pribadi</option>
-                <option value="npwp_badan">Pembuatan NIB Badan</option>
-              </select>
+              <SearchableDropdown 
+                options={formOptions} 
+                selected={formType}
+                onChange={(value) => setFormType(value)}
+              />
             </div>
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isLoading || !formType} className="w-full">
               {isLoading ? 'Membuat...' : 'Buat Formulir'}
             </Button>
           </form>
