@@ -80,9 +80,15 @@ export default function CreateFormModal() {
                 onChange={(e) => setFormType(e.target.value)}
                 className="w-full px-3 py-2 border rounded-md"
               >
-                <option value="pt_perorangan">PT Perorangan</option>
+                <option value="pt_perorangan">Pendirian PT Perorangan</option>
                 <option value="yayasan">Pendirian Yayasan</option>
+                <option value="pt_umum">Pendirian PT UMUM</option>
+                <option value="pt_umum">Pendirian Perkumpulan</option>
+                <option value="pt_umum">Pendirian Koperasi</option>
+                <option value="pt_umum">Pendirian CV</option>
+                <option value="pt_umum">Pendirian Figma</option>
                 <option value="npwp_pribadi">Pembuatan NPWP PRIBADI</option>
+                <option value="npwp_badan">Pembuatan NPWP Badan</option>
               </select>
             </div>
             <Button type="submit" disabled={isLoading} className="w-full">
