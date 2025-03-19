@@ -89,6 +89,8 @@ export default function CreateFormModal() {
                 <option value="pt_umum">Pendirian Figma</option>
                 <option value="npwp_pribadi">Pembuatan NPWP PRIBADI</option>
                 <option value="npwp_badan">Pembuatan NPWP Badan</option>
+                <option value="npwp_badan">Pembuatan NIB Pribadi</option>
+                <option value="npwp_badan">Pembuatan NIB Badan</option>
               </select>
             </div>
             <Button type="submit" disabled={isLoading} className="w-full">
