@@ -634,6 +634,7 @@ const generatePDF = async () => {
                   type="button"
                   onClick={() => addGroupItem(field.name, field.fields)}
                   className="mt-2"
+                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
                 >
                   Tambah Pengurus
                 </Button>
@@ -732,11 +733,35 @@ const generatePDF = async () => {
                   className="w-full"
                   disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
                 />
-                {formData[field.name] && (
-                  <div className="mt-2">
-                    <img src={`${formData[field.name]}?t=${Date.now()}`} alt="Preview" className="max-w-xs mt-1" />
-                  </div>
-                )}
+               {formData[field.name] && (
+  <div className="mt-2">
+    {formData[field.name].match(/\.pdf$/i) ? (
+      <object
+        data={`${formData[field.name]}?t=${Date.now()}`}
+        type="application/pdf"
+        width="100%"
+        height="500px"
+      >
+        <p>
+          Preview PDF tidak tersedia.{' '}
+          <a
+            href={`${formData[field.name]}?t=${Date.now()}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Download PDF
+          </a>
+        </p>
+      </object>
+    ) : (
+      <img
+        src={`${formData[field.name]}?t=${Date.now()}`}
+        alt="Preview"
+        className="max-w-xs mt-1"
+      />
+    )}
+  </div>
+)}
               </div>
             );
           }
