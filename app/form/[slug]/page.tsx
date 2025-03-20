@@ -608,11 +608,33 @@ const generatePDF = async () => {
                               className="w-full"
                               disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
                             />
-                            {value && (
-                              <div className="mt-2">
-                                <img src={`${value}?t=${Date.now()}`} alt="Preview" className="max-w-xs mt-1" />
-                              </div>
-                            )}
+                            {value && (() => {
+  const fileUrl = value.trim();
+  const isPdf = fileUrl.split('?')[0].toLowerCase().endsWith('.pdf');
+  return isPdf ? (
+    <iframe
+      src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+      width="100%"
+      height="500px"
+      frameBorder="0"
+      title="PDF Preview"
+    >
+      <p>
+        Preview PDF tidak tersedia.{' '}
+        <a href={`${fileUrl}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
+          Download PDF
+        </a>
+      </p>
+    </iframe>
+  ) : (
+    <img
+      src={`${fileUrl}?t=${Date.now()}`}
+      alt="Preview"
+      className="max-w-xs mt-1"
+    />
+  );
+})()}
+
                           </div>
                         );
                       }
