@@ -735,7 +735,7 @@ const generatePDF = async () => {
                 />
                {formData[field.name] && (
   <div className="mt-2">
-    {/\.pdf($|\?)/i.test(formData[field.name]) ? (
+    {formData[field.name].split('?')[0].toLowerCase().endsWith('.pdf') ? (
       <object
         data={`${formData[field.name]}?t=${Date.now()}`}
         type="application/pdf"
