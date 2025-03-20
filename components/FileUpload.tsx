@@ -2,7 +2,7 @@ import { useDropzone } from 'react-dropzone';
 
 export const FileUpload = ({ accept, onFileSelect, disabled }) => {
   const { getRootProps, getInputProps } = useDropzone({
-    accept: accept || 'image/*',
+    accept: accept || 'image/*,application/pdf',
     multiple: false,
     disabled: disabled, // Tambahkan disabled config
     onDrop: (acceptedFiles) => {
