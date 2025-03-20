@@ -734,26 +734,23 @@ const generatePDF = async () => {
                   disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
                 />
                {formData[field.name] && (() => {
-  const fileUrl = formData[field.name];
+  const fileUrl = formData[field.name].trim();
   const isPdf = fileUrl.split('?')[0].toLowerCase().endsWith('.pdf');
   return isPdf ? (
-    <object
-      data={`${fileUrl}?t=${Date.now()}`}
-      type="application/pdf"
+    <iframe
+      src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
       width="100%"
       height="500px"
+      frameBorder="0"
+      title="PDF Preview"
     >
       <p>
         Preview PDF tidak tersedia.{' '}
-        <a
-          href={`${fileUrl}?t=${Date.now()}`}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a href={`${fileUrl}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
           Download PDF
         </a>
       </p>
-    </object>
+    </iframe>
   ) : (
     <img
       src={`${fileUrl}?t=${Date.now()}`}
