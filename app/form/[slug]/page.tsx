@@ -735,7 +735,7 @@ const generatePDF = async () => {
                 />
                {formData[field.name] && (
   <div className="mt-2">
-    {formData[field.name].match(/\.pdf$/i) ? (
+    {/\.(pdf)(\?.*)?$/i.test(formData[field.name]) ? (
       <object
         data={`${formData[field.name]}?t=${Date.now()}`}
         type="application/pdf"
@@ -762,6 +762,7 @@ const generatePDF = async () => {
     )}
   </div>
 )}
+
               </div>
             );
           }
