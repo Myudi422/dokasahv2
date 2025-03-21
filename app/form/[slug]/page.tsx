@@ -150,7 +150,7 @@ const generatePDF = async () => {
   if (!formConfig) return;
   const doc = new jsPDF();
 
-  // Margin disesuaikan agar konten tidak menimpa area header & footer pada template
+  // Margin
   const leftMargin = 20, rightMargin = 20, topMargin = 60, bottomMargin = 30;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -160,8 +160,7 @@ const generatePDF = async () => {
   // URL template PNG full A4
   const templateUrl = "https://file.ccgnimex.my.id/file/ccgnimex/dokasah/berkas/Branding%20Dokasah/surat-2.png";
 
-  // Fungsi untuk load, mengkompres, dan mengubah gambar ke Base64
-  // Tambahan parameter quality (default 0.7), template cover bisa pakai quality 0.9
+  // Fungsi kompres gambar (template)
   const compressImage = async (imageUrl, maxWidth = 1080, quality = 0.9) => {
     try {
       const img = new Image();
@@ -181,7 +180,11 @@ const generatePDF = async () => {
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-          resolve({ dataUrl: canvas.toDataURL("image/jpeg", quality), width: img.width, height: img.height });
+          resolve({
+            dataUrl: canvas.toDataURL("image/jpeg", quality),
+            width: img.width,
+            height: img.height
+          });
         };
       });
     } catch (error) {
@@ -190,22 +193,21 @@ const generatePDF = async () => {
     }
   };
 
-  // Kompres template cover dengan kualitas 0.9 agar file size tidak bengkak tapi tetap tajam
+  // Kompres template cover
   const templateImageObj = await compressImage(templateUrl, 1080, 1.0);
   const templateImage = templateImageObj ? templateImageObj.dataUrl : null;
 
-  // Fungsi untuk menambahkan template sebagai latar belakang di halaman saat ini
+  // Fungsi untuk menambahkan template ke halaman
   const addTemplate = () => {
     if (templateImage) {
-      // Gambar template akan memenuhi seluruh halaman
       doc.addImage(templateImage, "JPEG", 0, 0, pageWidth, pageHeight);
     }
   };
 
-  // Tambahkan template ke halaman pertama
+  // Halaman pertama
   addTemplate();
 
-  // **Judul Form**
+  // Judul Form
   doc.setFontSize(16);
   const titleLines = doc.splitTextToSize(formConfig.title, effectiveWidth);
   titleLines.forEach((line) => {
@@ -219,77 +221,149 @@ const generatePDF = async () => {
   });
   y += 5;
 
-  // Faktor konversi pixel ke mm (A4: 595px -> 210mm)
-  const pxToMm = pageWidth / 595;
-
-  // **Isi Form**
+  // Konten form
   doc.setFontSize(12);
-  for (const field of formConfig.fields) {
-    let value = formData[field.name] || '';
 
-    // Jika field adalah array (contoh: Pengurus)
+  // Fungsi helper untuk cek page break
+  const checkPageBreak = () => {
+    if (y > pageHeight - bottomMargin) {
+      doc.addPage();
+      addTemplate();
+      y = topMargin;
+    }
+  };
+
+  for (const field of formConfig.fields) {
+    const value = formData[field.name] || "";
+
+    // 1. Field bertipe array (repeat)
     if (Array.isArray(value)) {
+      checkPageBreak();
       doc.text(`${field.label}:`, leftMargin, y);
-      y += 5;
-      for (const item of value) {
-        if (typeof item === 'object' && item !== null) {
-          for (const [key, val] of Object.entries(item)) {
-            if (typeof val === "string" && val.match(/\.(jpeg|jpg|png|gif)$/i)) {
-              // Untuk field foto, sisipkan link "klik disini" dengan target new tab
-              const labelText = `- ${key}: `;
-              doc.text(labelText + "klik disini", leftMargin, y);
-              doc.textWithLink(
-                "klik disini",
-                leftMargin + doc.getTextWidth(labelText),
-                y,
-                { url: val, target: '_blank' }
-              );
-              y += 10;
+      y += 6;
+
+      value.forEach((groupItem, index) => {
+        checkPageBreak();
+        // Tambahkan heading untuk item repeat (opsional)
+        doc.text(`Item #${index + 1}`, leftMargin + 5, y);
+        y += 6;
+
+        // Loop subfield
+        if (typeof groupItem === "object" && groupItem !== null) {
+          for (const [key, val] of Object.entries(groupItem)) {
+            checkPageBreak();
+            if (typeof val === "string") {
+              // Jika file gambar
+              if (val.match(/\.(jpeg|jpg|png|gif)$/i)) {
+                const labelText = `- ${key}: `;
+                doc.text(labelText + "klik disini", leftMargin + 10, y);
+                doc.textWithLink(
+                  "klik disini",
+                  leftMargin + 10 + doc.getTextWidth(labelText),
+                  y,
+                  { url: val, target: "_blank" }
+                );
+                y += 10;
+              }
+              // Jika file PDF
+              else if (val.toLowerCase().endsWith(".pdf")) {
+                const labelText = `- ${key}: `;
+                doc.text(labelText + "klik disini", leftMargin + 10, y);
+                doc.textWithLink(
+                  "klik disini",
+                  leftMargin + 10 + doc.getTextWidth(labelText),
+                  y,
+                  { url: val, target: "_blank" }
+                );
+                y += 10;
+              }
+              // Teks biasa
+              else {
+                const textToPrint = `- ${key}: ${val}`;
+                const textLines = doc.splitTextToSize(textToPrint, effectiveWidth);
+                textLines.forEach((line) => {
+                  checkPageBreak();
+                  doc.text(line, leftMargin + 10, y);
+                  y += 6;
+                });
+              }
             } else {
-              doc.text(`- ${key}: ${val}`, leftMargin, y);
-              y += 5;
+              // Jika bukan string (misal number)
+              const textToPrint = `- ${key}: ${val}`;
+              const textLines = doc.splitTextToSize(textToPrint, effectiveWidth);
+              textLines.forEach((line) => {
+                checkPageBreak();
+                doc.text(line, leftMargin + 10, y);
+                y += 6;
+              });
             }
           }
         } else {
-          doc.text(`- ${item}`, leftMargin + 5, y);
-          y += 5;
+          // Jika item array hanya berupa string/number
+          const textToPrint = `- ${groupItem}`;
+          const textLines = doc.splitTextToSize(textToPrint, effectiveWidth);
+          textLines.forEach((line) => {
+            checkPageBreak();
+            doc.text(line, leftMargin + 10, y);
+            y += 6;
+          });
         }
-      }
+
+        // Jarak setelah satu item repeat
+        y += 8;
+      });
+
+      // Jarak setelah field repeat
       y += 5;
       continue;
     }
 
-    // Jika Field adalah Gambar (non-array)
-    if (typeof value === "string" && value.match(/\.(jpeg|jpg|gif|png)$/i)) {
+    // 2. Field file gambar (non-array)
+    if (typeof value === "string" && value.match(/\.(jpeg|jpg|png|gif)$/i)) {
+      checkPageBreak();
       const labelText = `${field.label}: `;
       doc.text(labelText + "klik disini", leftMargin, y);
       doc.textWithLink(
         "klik disini",
         leftMargin + doc.getTextWidth(labelText),
         y,
-        { url: value, target: '_blank' }
+        { url: value, target: "_blank" }
       );
       y += 10;
       continue;
     }
 
-    // Default: Teks Normal
+    // 3. Field file PDF (non-array)
+    if (typeof value === "string" && value.toLowerCase().endsWith(".pdf")) {
+      checkPageBreak();
+      const labelText = `${field.label}: `;
+      doc.text(labelText + "klik disini", leftMargin, y);
+      doc.textWithLink(
+        "klik disini",
+        leftMargin + doc.getTextWidth(labelText),
+        y,
+        { url: value, target: "_blank" }
+      );
+      y += 10;
+      continue;
+    }
+
+    // 4. Field biasa (text, number, dsb.)
+    checkPageBreak();
     const text = `${field.label}: ${value}`;
     const textLines = doc.splitTextToSize(text, effectiveWidth);
     textLines.forEach((line) => {
-      if (y > pageHeight - bottomMargin) {
-        doc.addPage();
-        addTemplate();
-        y = topMargin;
-      }
+      checkPageBreak();
       doc.text(line, leftMargin, y);
-      y += 10;
+      y += 6;
     });
+    y += 4;
   }
 
   // Simpan PDF
   doc.save(`${formConfig.title}.pdf`);
 };
+
 
 
 
