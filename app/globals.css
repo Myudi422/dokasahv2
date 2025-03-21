@@ -65,26 +65,6 @@
   color: transparent;
 }
 
-/* Responsive typography */
-h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem); /* Ukuran teks responsif antara 2rem (mobile) hingga 3.5rem (desktop) */
-  line-height: 1.2; /* Mengatur jarak antar baris agar tetap proporsional */
-  text-align: center; /* Teks tetap di tengah */
-  margin: 0 auto; /* Pusatkan elemen */
-  max-width: 90%; /* Batasi lebar maksimal teks */
-  word-wrap: break-word; /* Pastikan teks panjang tidak meluap */
-}
-
-/* Badge styling */
-.bg-primary\/10 {
-  background-color: rgba(14, 179, 255, 0.1); /* Warna latar belakang transparan */
-}
-.text-primary {
-  color: #0eb3ff; /* Warna teks utama */
-}
-.border-primary\/20 {
-  border-color: rgba(14, 179, 255, 0.2); /* Warna border transparan */
-}
 /* Responsive Image with rounded corners */
 .article-image {
   width: 100%;
