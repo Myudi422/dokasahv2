@@ -12,6 +12,7 @@ import {
   Menu,
   MoreHorizontal,
   FileArchive,
+  NotepadText,
   LoaderIcon,
   Users,
   ChevronUp,
@@ -234,12 +235,17 @@ const handleChangeStatus = async (slug, newStatus) => {
     <div className="flex min-h-screen bg-background">
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r bg-card overflow-y-auto">
-        <div className="p-4 flex items-center gap-2 border-b">
-          <span className="font-bold text-lg">Dokasah</span>
-        </div>
+      <div 
+  className="p-4 flex items-center gap-2 border-b cursor-pointer"
+  onClick={() => window.location.href = "https://dokasah.web.id"}
+>
+  <span className="font-bold text-lg">Dokasah</span>
+</div>
+
         <nav className="flex-1 p-2 space-y-1">
           <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
           <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
+          <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
         </nav>
         <div className="p-4 border-t mt-auto">
           <div className="flex items-center gap-3">
@@ -290,6 +296,7 @@ const handleChangeStatus = async (slug, newStatus) => {
                 <nav className="flex-1 p-4 space-y-2">
                   <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
                   <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
+                  <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
                 </nav>
               </SheetContent>
             </Sheet>
