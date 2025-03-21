@@ -58,3 +58,212 @@
   }
 }
 
+/* Gradient text for h1 */
+.text-gradient {
+  background: linear-gradient(45deg, #0eb3ff, #08b8fd);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Responsive typography */
+h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem); /* Ukuran teks responsif antara 2rem (mobile) hingga 3.5rem (desktop) */
+  line-height: 1.2; /* Mengatur jarak antar baris agar tetap proporsional */
+  text-align: center; /* Teks tetap di tengah */
+  margin: 0 auto; /* Pusatkan elemen */
+  max-width: 90%; /* Batasi lebar maksimal teks */
+  word-wrap: break-word; /* Pastikan teks panjang tidak meluap */
+}
+
+/* Badge styling */
+.bg-primary\/10 {
+  background-color: rgba(14, 179, 255, 0.1); /* Warna latar belakang transparan */
+}
+.text-primary {
+  color: #0eb3ff; /* Warna teks utama */
+}
+.border-primary\/20 {
+  border-color: rgba(14, 179, 255, 0.2); /* Warna border transparan */
+}
+/* Responsive Image with rounded corners */
+.article-image {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;  /* Rounded corners */
+  object-fit: cover;
+  margin-bottom: 20px;
+}
+
+/* Tailwind customizations for the article */
+.prose img {
+  width: 100%;  /* Ensures the images are responsive */
+  height: auto;
+  border-radius: 12px;  /* Rounded corners */
+}
+
+
+/* Custom style for H1 within the prose container */
+.prose h1 {
+  font-size: 1.5rem;  /* Adjust size as needed */
+  font-weight: bold;
+  padding: 0 0.5rem;  /* Optional: Add slight padding for responsiveness */
+  background: linear-gradient(45deg, #08b8fd, #08b8fd);
+  -webkit-background-clip: text;
+  color: transparent;
+  line-height: 1.2;  /* Tighten line spacing */
+  margin-bottom: 0.5rem;  /* Reduce gap between title and content */
+  position: relative;  /* Needed for custom underline */
+  display: inline-block; /* Ensures the underline matches the text width */
+}
+
+/* Modern underline effect */
+.prose h1::after {
+  content: "";
+  position: absolute;
+  bottom: -3px; /* Adjust distance from text */
+  left: 0;
+  width: 100%;
+  height: 3px;  /* Underline thickness */
+  background: linear-gradient(45deg, #08b8fd, #08b8fd);  /* Gradient underline */
+  border-radius: 5px;  /* Smooth rounded corners */
+}
+
+/* Custom style for H1 within the prose container */
+.prose h2 {
+  font-size: 1.5rem;  /* Adjust size as needed */
+  font-weight: bold;
+  padding: 0 0.5rem;  /* Optional: Add slight padding for responsiveness */
+  background: linear-gradient(45deg, #08b8fd, #08b8fd);
+  -webkit-background-clip: text;
+  color: transparent;
+  line-height: 1.2;  /* Tighten line spacing */
+  margin-bottom: 0.5rem;  /* Reduce gap between title and content */
+  position: relative;  /* Needed for custom underline */
+  display: inline-block; /* Ensures the underline matches the text width */
+}
+
+/* Modern underline effect */
+.prose h2::after {
+  content: "";
+  position: absolute;
+  bottom: -3px; /* Adjust distance from text */
+  left: 0;
+  width: 100%;
+  height: 3px;  /* Underline thickness */
+  background: linear-gradient(45deg, #08b8fd, #08b8fd);  /* Gradient underline */
+  border-radius: 5px;  /* Smooth rounded corners */
+}
+
+/* Custom style for paragraphs within the prose container */
+.prose p {
+  font-size: 1rem;  /* Adjust size as needed */
+  line-height: 1.8;  /* Increased line height for readability */
+  margin-top: 1.5rem;  /* Adds spacing above the paragraph */
+  margin-bottom: 1.5rem;  /* Adds spacing below the paragraph */
+  color: #333;  /* Ensure text color is readable */
+  text-align: justify;  /* Optional: Justify the text for a more polished look */
+  padding: 0 0.5rem;  /* Optional: Add slight padding for responsiveness */
+}
+
+
+/* Custom style for unordered lists (UL) within the prose container */
+.prose ul {
+  margin-top: 1.5rem;  /* Adds space above the list */
+  margin-bottom: 1.5rem;  /* Adds space below the list */
+  padding-left: 1.5rem;  /* Adds space for list item bullets */
+  padding-right: 0.5rem;  /* Slight padding on the right for responsiveness */
+  font-size: 1rem;  /* Adjust font size as needed */
+  list-style-type: disc;  /* Ensures a disc-style bullet */
+}
+
+.prose ul li {
+  margin-bottom: 0.75rem;  /* Adds space between list items */
+  line-height: 1.6;  /* Increases line height for readability */
+}
+
+
+/* Daftar isi dengan tampilan diagram flow */
+.toc {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.5rem;
+  position: relative;
+  font-family: Arial, sans-serif;
+  color: #333;
+}
+
+/* Garis vertikal utama (akar) untuk semua item */
+.toc::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px; /* Atur posisi garis vertikal */
+  width: 2px;
+  background: #08b8fd;
+  border-radius: 1px; /* Untuk membuat garis lebih halus */
+}
+
+/* Setiap item dalam daftar isi */
+.toc li {
+  position: relative;
+  margin-bottom: 1.5rem; /* Jarak antar item */
+  padding-left: 20px; /* Ruang untuk garis penghubung horizontal */
+  line-height: 1.5; /* Tinggi baris teks */
+  cursor: pointer; /* Memberikan efek hover seperti tautan */
+  transition: color 0.3s ease; /* Efek transisi saat hover */
+}
+
+/* Hover effect pada item */
+.toc li:hover {
+  color: #08b8fd;
+}
+
+/* Garis horizontal yang menghubungkan garis vertikal ke teks */
+.toc li::before {
+  content: "";
+  position: absolute;
+  top: 50%; /* Agar sejajar dengan teks */
+  left: 0;
+  width: 20px; /* Panjang garis horizontal */
+  border-top: 2px solid #08b8fd;
+  border-radius: 1px; /* Untuk membuat garis lebih halus */
+}
+
+/* Lingkaran kecil sebagai node di setiap item */
+.toc li::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -7px; /* Posisi lingkaran di tengah garis vertikal */
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  background: #08b8fd;
+  border-radius: 50%; /* Bentuk lingkaran */
+  border: 2px solid #fff; /* Border putih untuk kontras */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Efek bayangan */
+}
+
+/* Untuk item yang merupakan sub-heading (misalnya h2) */
+.toc li.sub {
+  margin-left: 20px; /* Indentasi untuk sub item */
+}
+
+/* Gaya tambahan untuk sub-item */
+.toc li.sub::before {
+  border-top-color: #9ca8ff; /* Warna garis horizontal untuk sub-item */
+}
+
+.toc li.sub::after {
+  background: #9ca8ff; /* Warna lingkaran untuk sub-item */
+}
+
+/* Memberikan ruang tambahan di atas heading agar tidak tertutup oleh header */
+h1, h2 {
+  scroll-margin-top: 80px; /* Sesuaikan dengan tinggi header Anda */
+}
+
+
+
