@@ -6,6 +6,8 @@ import { ErrorBoundary } from "react-error-boundary";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import dynamic from "next/dynamic";
+import { ArrowLeft, Save } from "lucide-react"; // Import ikon
+
 
 interface Article {
   id: number;
@@ -128,20 +130,24 @@ export default function BlogEditorPage() {
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Edit Artikel: {article.title}</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+        <h1 className="text-xl md:text-2xl font-bold truncate max-w-[70vw] md:max-w-none">
+          Edit: {article.title}
+        </h1>
+        <div className="flex gap-2 w-full md:w-auto">
           <button
             onClick={() => router.back()}
-            className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 p-2 rounded transition-colors flex-1 md:flex-none"
+            aria-label="Kembali"
           >
-            ← Kembali
+            <ArrowLeft className="w-5 h-5 mx-auto" />
           </button>
           <button
             onClick={handleSave}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded transition-colors flex-1 md:flex-none"
+            aria-label="Simpan"
           >
-            Simpan
+            <Save className="w-5 h-5 mx-auto" />
           </button>
         </div>
       </div>
