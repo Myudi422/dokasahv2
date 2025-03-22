@@ -129,8 +129,12 @@ export default function BlogArticleContent({
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t py-6 text-center bg-gray-100">
-        <p className="text-sm">&copy; 2024 Dokasah. All rights reserved.</p>
+      <footer className="border-t bg-muted/50">
+        <div className="container py-8 px-4 md:px-6">
+          <p className="text-center text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Dokasah. All rights reserved.
+          </p>
+        </div>
       </footer>
     </div>
   );

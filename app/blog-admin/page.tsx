@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Article {
   id: number;
@@ -16,22 +18,46 @@ export default function BlogAdminPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newSlug, setNewSlug] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
 
-  // Ambil daftar artikel dari API
-  useEffect(() => {
-    const fetchArticles = async () => {
-      try {
-        const response = await fetch("https://dev.dokasah.web.id/api/blog");
-        const data = await response.json();
-        setArticles(data);
-      } catch (error) {
-        console.error("Error fetching articles:", error);
+  const fetchArticles = async (page: number) => {
+    try {
+      const response = await fetch(
+        `https://dev.dokasah.web.id/api/blog?page=${page}&limit=${itemsPerPage}`
+      );
+      const result = await response.json();
+      
+      // Pastikan response memiliki struktur yang benar
+      if (result.data && Array.isArray(result.data)) {
+        setArticles(result.data);
+        setTotalPages(Math.ceil(result.total / itemsPerPage));
+      } else {
+        setArticles([]); // Fallback ke array kosong
       }
-    };
+    } catch (error) {
+      console.error("Error fetching articles:", error);
+      setArticles([]); // Fallback ke array kosong
+    }
+  };
 
-    fetchArticles();
-  }, []);
+  useEffect(() => {
+    fetchArticles(currentPage);
+  }, [currentPage]);
 
+  const handleDelete = async (id: number) => {
+    if (confirm("Apakah Anda yakin ingin menghapus artikel ini?")) {
+      try {
+        await fetch(`https://dev.dokasah.web.id/api/blog/${id}`, {
+          method: "DELETE",
+        });
+        fetchArticles(currentPage);
+      } catch (error) {
+        console.error("Error deleting article:", error);
+      }
+    }
+  };
   // Fungsi untuk membuat artikel baru
   const handleCreateArticle = async () => {
     if (!newTitle || !newSlug) {
@@ -63,26 +89,60 @@ export default function BlogAdminPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Blog Admin</h1>
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
-      >
-        + Buat Artikel
-      </button>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Blog Admin</h1>
+        <Button onClick={() => setIsModalOpen(true)} variant="default" className="gap-2">
+          <Plus className="h-4 w-4" />
+          Buat Artikel
+        </Button>
+      </div>
 
-      <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {articles.map((article) => (
-          <div key={article.id} className="border p-4 mb-2">
-            <h2 className="text-xl font-semibold">{article.title}</h2>
-            <p className="text-gray-500">{article.slug}</p>
-            <button
-              onClick={() => router.push(`/blog-admin/${article.slug}`)}
-              className="bg-green-500 text-white px-4 py-2 rounded mt-2"
-            >
-              Edit Artikel
-            </button>
+          <div key={article.id} className="border p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h2 className="text-lg font-semibold">{article.title}</h2>
+                <p className="text-gray-500 text-sm">{article.slug}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => router.push(`/blog-admin/${article.slug}`)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(article.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </div>
+            </div>
+            {article.image && (
+              <img 
+                src={article.image} 
+                alt={article.title}
+                className="w-full h-32 object-cover rounded"
+              />
+            )}
           </div>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-center gap-2">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <Button
+            key={page}
+            variant={currentPage === page ? "default" : "outline"}
+            onClick={() => setCurrentPage(page)}
+          >
+            {page}
+          </Button>
         ))}
       </div>
 
