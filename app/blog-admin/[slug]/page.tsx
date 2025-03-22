@@ -3,32 +3,27 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ErrorBoundary } from "react-error-boundary";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Save } from "lucide-react"; // Import ikon
-
+import { ArrowLeft, Save } from "lucide-react";
 
 interface Article {
   id: number;
   title: string;
   slug: string;
   content: string;
+  images: { id: number; image_url: string }[];
 }
 
-const Tiptap = dynamic(
-  () => import("@/components/TiptapEditor"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="animate-pulse h-[500px] bg-gray-100 rounded-md">
-        <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-      </div>
-    )
-  }
-);
+const Tiptap = dynamic(() => import("@/components/TiptapEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="animate-pulse h-[500px] bg-gray-100 rounded-md">
+      <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+    </div>
+  ),
+});
 
 const EditorErrorFallback = ({ error, resetErrorBoundary }: any) => (
   <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
@@ -43,11 +38,24 @@ const EditorErrorFallback = ({ error, resetErrorBoundary }: any) => (
   </div>
 );
 
+function replaceImagePlaceholders(
+  content: string | null, // Tambahkan tipe null
+  images: { id: number; image_url: string }[]
+): string {
+  if (!content) return ''; // Handle null content
+  
+  return content.replace(/<p>\s*\[IMAGE_(\d+)\]\s*<\/p>/gi, (match, p1) => {
+    const index = parseInt(p1, 10) - 1;
+    const image = images[index];
+    return image ? `<img src="${image.image_url}" alt="Image ${p1}" />` : match;
+  });
+}
+
 export default function BlogEditorPage() {
   const router = useRouter();
   const params = useParams();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
-  
+
   const [article, setArticle] = useState<Article | null>(null);
   const [editorContent, setEditorContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -64,13 +72,19 @@ export default function BlogEditorPage() {
         );
 
         if (!response.ok) throw new Error("Artikel tidak ditemukan");
-        
+
         const data = await response.json();
         setArticle(data);
-        setEditorContent(data.content);
+
+        // Ganti placeholder <p>[IMAGE_x]</p> dengan elemen <img> (tanpa pembungkus <p>)
+        const newContent = replaceImagePlaceholders(
+          data.content,
+          data.images || []
+        );
+        setEditorContent(newContent);
         setError("");
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (error.name !== "AbortError") {
           setError(error.message);
           console.error("Error:", error);
         }
@@ -91,11 +105,12 @@ export default function BlogEditorPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        // Simpan konten HTML yang sudah mengandung tag <img>
         body: JSON.stringify({ content: editorContent }),
       });
 
       if (!response.ok) throw new Error("Gagal menyimpan artikel");
-      
+
       alert("Artikel berhasil disimpan!");
       router.push(`/blog/${slug}`);
     } catch (error: any) {
@@ -156,8 +171,8 @@ export default function BlogEditorPage() {
         FallbackComponent={EditorErrorFallback}
         onReset={() => setEditorContent("")}
       >
-        <Tiptap 
-          content={editorContent} 
+        <Tiptap
+          content={editorContent}
           onUpdate={(content: string) => setEditorContent(content)}
         />
       </ErrorBoundary>
