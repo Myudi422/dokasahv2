@@ -242,11 +242,14 @@ const handleChangeStatus = async (slug, newStatus) => {
   <span className="font-bold text-lg">Dokasah</span>
 </div>
 
-        <nav className="flex-1 p-2 space-y-1">
-          <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-          <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
-          <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
-        </nav>
+<nav className="flex-1 p-2 space-y-1">
+  <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
+  <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
+  {user?.role === 'admin' && (
+    <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
+  )}
+</nav>
+
         <div className="p-4 border-t mt-auto">
           <div className="flex items-center gap-3">
             <Avatar>
@@ -294,10 +297,13 @@ const handleChangeStatus = async (slug, newStatus) => {
                   <span className="font-bold text-lg">Dokasah</span>
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
-                  <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-                  <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
-                  <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
-                </nav>
+  <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
+  <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
+  {user?.role === 'admin' && (
+    <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
+  )}
+</nav>
+
               </SheetContent>
             </Sheet>
           </div>
