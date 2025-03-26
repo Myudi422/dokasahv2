@@ -10,9 +10,8 @@ interface AuthContextType {
   isAuthLoaded: boolean;
 }
 
-// Tambahkan fungsi untuk mendekode JWT
 function parseJwt(token: string) {
-  try {f
+  try {
     return JSON.parse(atob(token.split('.')[1]));
   } catch (e) {
     return null;
@@ -23,8 +22,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, _setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser ] = useState<any>(null);
   const [isAuthLoaded, setIsAuthLoaded] = useState(false);
+  const router = useRouter();
 
   const setToken = (newToken: string | null) => {
     if (newToken) {
@@ -40,15 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (storedToken) {
       const decodedToken = parseJwt(storedToken);
       if (decodedToken?.exp && decodedToken.exp * 1000 < Date.now()) {
-        // Token kadaluarsa, hapus dari localStorage
+        // Token kadaluarsa, hapus dari localStorage dan redirect ke login
         localStorage.removeItem('token');
         _setToken(null);
+        router.replace('/login?redirect=' + encodeURIComponent(window.location.pathname));
       } else {
         _setToken(storedToken);
       }
     }
     setIsAuthLoaded(true);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (token) {
@@ -63,13 +64,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return res.json();
         })
-        .then(data => setUser(data.user))
+        .then(data => setUser (data.user))
         .catch(() => {
-          // Hapus token jika terjadi error 403/401
+          // Hapus token jika terjadi error 403/401 dan redirect ke login
           setToken(null);
+          router.replace('/login?redirect=' + encodeURIComponent(window.location.pathname));
         });
     }
-  }, [token]);
+  }, [token, router]);
 
   return (
     <AuthContext.Provider value={{ token, user, setToken, isAuthLoaded }}>
@@ -86,7 +88,6 @@ export function useAuth() {
   return context;
 }
 
-// Hook useAuthRedirect yang menunggu hingga isAuthLoaded true
 export function useAuthRedirect() {
   const router = useRouter();
   const pathname = usePathname();
