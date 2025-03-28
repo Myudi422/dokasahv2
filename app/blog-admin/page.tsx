@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
 
 interface Article {
   id: number;
@@ -14,13 +15,24 @@ interface Article {
 
 export default function BlogAdminPage() {
   const router = useRouter();
+  const { user, isAuthLoaded } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [newSlug, setNewSlug] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 10;
+
+  // Redirect jika user sudah termuat namun bukan admin
+  useEffect(() => {
+    if (isAuthLoaded) {
+      if (!user || user.role !== "admin") {
+        router.replace("/dashboard");
+      }
+    }
+  }, [isAuthLoaded, user, router]);
 
   const fetchArticles = async (page: number) => {
     try {
@@ -28,7 +40,7 @@ export default function BlogAdminPage() {
         `https://dev.dokasah.web.id/api/blog?page=${page}&limit=${itemsPerPage}`
       );
       const result = await response.json();
-      
+
       // Pastikan response memiliki struktur yang benar
       if (result.data && Array.isArray(result.data)) {
         setArticles(result.data);
@@ -39,6 +51,38 @@ export default function BlogAdminPage() {
     } catch (error) {
       console.error("Error fetching articles:", error);
       setArticles([]); // Fallback ke array kosong
+    }
+  };
+
+  // Fungsi untuk generate judul dan slug
+  const handleGenerateTitleSlug = async () => {
+    if (!newTitle.trim()) {
+      alert("Silakan masukkan topik terlebih dahulu");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch("https://dev.dokasah.web.id/api/ai/generate-title-slug", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: newTitle }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal generate judul & slug");
+      }
+
+      const data = await response.json();
+      setNewTitle(data.title);
+      setNewSlug(data.slug);
+    } catch (error: any) {
+      console.error("Generate error:", error);
+      alert(error.message || "Terjadi kesalahan saat generate");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -58,6 +102,7 @@ export default function BlogAdminPage() {
       }
     }
   };
+
   // Fungsi untuk membuat artikel baru
   const handleCreateArticle = async () => {
     if (!newTitle || !newSlug) {
@@ -86,6 +131,11 @@ export default function BlogAdminPage() {
       alert("Terjadi kesalahan saat membuat artikel");
     }
   };
+
+  // Jika masih loading autentikasi, bisa tampilkan loading atau tidak sama sekali
+  if (!isAuthLoaded) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -148,39 +198,53 @@ export default function BlogAdminPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-80">
+          <div className="bg-white p-6 rounded shadow-lg w-96">
             <h2 className="text-xl font-bold mb-4">Buat Artikel Baru</h2>
             <div className="mb-4">
               <label className="block mb-1">Judul</label>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="w-full border px-2 py-1"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="flex-1 border px-2 py-1 rounded"
+                />
+                <Button
+                  onClick={handleGenerateTitleSlug}
+                  variant="outline"
+                  size="icon"
+                  disabled={isGenerating}
+                >
+                  <Wand2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="mb-4">
               <label className="block mb-1">Slug</label>
-              <input
-                type="text"
-                value={newSlug}
-                onChange={(e) => setNewSlug(e.target.value)}
-                className="w-full border px-2 py-1"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newSlug}
+                  onChange={(e) => setNewSlug(e.target.value)}
+                  className="flex-1 border px-2 py-1 rounded"
+                />
+                <Button
+                  onClick={handleGenerateTitleSlug}
+                  variant="outline"
+                  size="icon"
+                  disabled={isGenerating}
+                >
+                  <Wand2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="mr-2 px-4 py-2 border rounded"
-              >
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setIsModalOpen(false)} variant="outline">
                 Batal
-              </button>
-              <button
-                onClick={handleCreateArticle}
-                className="bg-green-500 text-white px-4 py-2 rounded"
-              >
-                Simpan
-              </button>
+              </Button>
+              <Button onClick={handleCreateArticle} disabled={isGenerating}>
+                {isGenerating ? "Membuat..." : "Simpan"}
+              </Button>
             </div>
           </div>
         </div>
