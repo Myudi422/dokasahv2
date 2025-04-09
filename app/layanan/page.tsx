@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle, Star, MessageCircle } from "lucide-react";
 import { sendGTMEvent } from "@next/third-parties/google";
+import Testimonisection from '@/components/testimonisection';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -402,6 +403,7 @@ export default function ServicesPage() {
             )}
           </div>
         </section>
+        <Testimonisection />
       </main>
 
       {/* Footer */}
