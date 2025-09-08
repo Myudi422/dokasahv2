@@ -123,10 +123,10 @@ export default function LandingPage() {
           <div className="flex items-center gap-4 pt-4">
             <div className="flex -space-x-2">
               {[
-                "https://completed.co.id/assets/images/landingpage/hero/pic-1.svg",
-                "https://completed.co.id/assets/images/landingpage/hero/pic-2.svg",
-                "https://completed.co.id/assets/images/landingpage/hero/pic-3.svg",
-                "https://completed.co.id/assets/images/landingpage/hero/pic-4.svg",
+                "https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/profile/9.jpg",
+                "https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/profile/8.jpg",
+                "https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/profile/11.jpg",
+                "https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/profile/9.jpg",
               ].map((url, index) => (
                 <img
                   key={index}
@@ -398,7 +398,7 @@ export default function LandingPage() {
               </div>
               <div className="relative mx-auto aspect-video overflow-hidden rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 p-1 shadow-xl dark:from-blue-950 dark:to-indigo-950 sm:w-full">
                 <Image
-                  src="https://file.simantep.workers.dev/0:/sample/Desain%20tanpa%20judul%20(1)%20(1).jpg"
+                  src="https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/Biru+Dan+Kuning+Modern+Jasa+Pemasanagan+Internet+Instagram+Post.jpg"
                   width={600}
                   height={400}
                   alt="Tim Legalitas"
