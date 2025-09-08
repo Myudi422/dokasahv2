@@ -107,7 +107,7 @@ export default function LoginPage() {
       <Button
         onClick={() =>
           window.open(
-            "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
+            "https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
           )
         }
         className="group"

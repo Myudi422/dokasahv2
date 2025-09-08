@@ -58,7 +58,7 @@ export default function LandingPage() {
     });
 
     window.open(
-      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
+      "https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
       "_blank",
       "noopener,noreferrer"
     );
@@ -105,7 +105,7 @@ export default function LandingPage() {
               className="group w-full sm:w-auto"
               onClick={() =>
                 window.open(
-                  "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20legalitas%2C%20bisa%20dibantu%3F",
+                  "https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20legalitas%2C%20bisa%20dibantu%3F",
                 )
               }
             >
@@ -580,7 +580,7 @@ export default function LandingPage() {
         onClick={() => {
           sendGTMEvent({ event: "CTA", value: `Hubungi Kami - ${service.title}` });
           window.open(
-            `https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(service.title)}`,
+            `https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20tentang%20${encodeURIComponent(service.title)}`,
             "_blank",
             "noopener,noreferrer"
           );
@@ -686,7 +686,7 @@ export default function LandingPage() {
     sendGTMEvent({ event: "konsultasi-cta", value: "Hubungi Kami - Legalitas" });
 
     window.open(
-      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
+      "https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
       "_blank",
       "noopener,noreferrer"
     );
@@ -702,7 +702,7 @@ export default function LandingPage() {
     sendGTMEvent({ event: "konsultasi-gratis", value: "Konsultasi Gratis - Legalitas" });
 
     window.open(
-      "https://wa.me/6287822344206?text=Saya%20ingin%20konsultasi%20gratis%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
+      "https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20gratis%20tentang%20pendirian%20Legalitas%2C%20bisa%20dibantu%3F",
       "_blank",
       "noopener,noreferrer"
     );
@@ -837,7 +837,7 @@ export default function LandingPage() {
                   >
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
-                  <span>+62 878-2234-4206</span>
+                  <span>+62 877-6751-8217</span>
                 </li>
                 <li className="flex items-center gap-2 text-sm text-muted-foreground">
                   <svg
