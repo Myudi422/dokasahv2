@@ -145,7 +145,7 @@ export default function LandingPage() {
         {/* Right Column: Image */}
         <div className="w-full lg:w-1/2">
           <Image
-            src="https://file.simantep.workers.dev/0:/sample/Tanpa%20judul%20(Konten%20Instagram)%20(3)%20(1)%20(1).webp"
+            src="https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/1.png"
             width={600}
             height={400}
             alt="Jasa Pembuatan PT"
