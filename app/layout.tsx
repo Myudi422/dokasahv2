@@ -52,6 +52,24 @@ export default function RootLayout({
     />
   </noscript>
 
+  {/* Google tag (gtag.js) for AW-674897184 */}
+  <Script
+    src="https://www.googletagmanager.com/gtag/js?id=AW-674897184"
+    strategy="afterInteractive"
+  />
+  <Script
+    id="gtag-init"
+    strategy="afterInteractive"
+    dangerouslySetInnerHTML={{
+      __html: `
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'AW-674897184');
+      `,
+    }}
+  />
+
   {/* Contoh Breadcrumb JSON-LD */}
   <Script
     type="application/ld+json"
