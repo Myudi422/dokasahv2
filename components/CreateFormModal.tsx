@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
 } from "@/components/ui/dialog";
@@ -36,8 +36,32 @@ export default function CreateFormModal({ onCreated }: Props) {
   const [error, setError] = useState("");
   const [dropOpen, setDropOpen] = useState(false);
   const { token } = useAuth();
+  const [formOptions, setFormOptions] = useState(FORM_OPTIONS);
 
-  const selectedOption = FORM_OPTIONS.find((o) => o.value === formType);
+  useEffect(() => {
+    if (isOpen && token) {
+      fetch(`${API_BASE}/api/form-structures/list.php`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.structures && data.structures.length > 0) {
+            const mapped = data.structures.map((s: any) => ({
+              value: s.form_type,
+              label: s.label,
+              active: s.is_active === 1 || s.is_active === true,
+            }));
+            setFormOptions(mapped);
+          }
+        })
+        .catch((err) => {
+          console.error("Gagal memuat template formulir:", err);
+          // Fallback to static FORM_OPTIONS
+        });
+    }
+  }, [isOpen, token]);
+
+  const selectedOption = formOptions.find((o) => o.value === formType);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +181,7 @@ export default function CreateFormModal({ onCreated }: Props) {
                 {dropOpen && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                     <div className="max-h-52 overflow-y-auto py-1">
-                      {FORM_OPTIONS.map((opt) => (
+                      {formOptions.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
@@ -170,7 +194,7 @@ export default function CreateFormModal({ onCreated }: Props) {
                             } ${formType === opt.value ? "bg-blue-50 text-blue-700" : ""}`}
                         >
                           {opt.label}
-                          {!opt.active && <span className="text-xs text-slate-300">Segera hadir</span>}
+                          {!opt.active && <span className="text-xs text-slate-350">Segera hadir</span>}
                         </button>
                       ))}
                     </div>

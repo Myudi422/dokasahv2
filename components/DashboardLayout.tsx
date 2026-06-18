@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Folder,
   NotepadText,
+  FileText,
   LogOut,
   Menu,
   ChevronRight,
@@ -58,7 +59,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/filemanager", icon: Folder, label: "File Manager" },
     ...(user?.role === "admin"
-      ? [{ href: "/blog-admin", icon: NotepadText, label: "Artikel Manager" }]
+      ? [
+          { href: "/blog-admin", icon: NotepadText, label: "Artikel Manager" },
+          { href: "/form-admin", icon: FileText, label: "Formulir Manager" },
+        ]
       : []),
   ];
 
