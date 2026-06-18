@@ -1,7 +1,7 @@
 // app/api/php/[...path]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const PHP_BASE = "https://ccgnimex.my.id/v2/android/dokasah";
+const PHP_BASE = "https://dev.legalpilar.id/v2/android/dokasah";
 
 async function handler(
   req: NextRequest,
@@ -57,7 +57,7 @@ async function handler(
           success: false,
           message: `PHP mengembalikan response kosong (HTTP ${phpRes.status}). Kemungkinan: PHP fatal error, tabel belum dibuat, atau file di server versi lama.`,
           phpUrl,
-          hint: "Jalankan: https://ccgnimex.my.id/v2/android/dokasah/setup.php?key=DokasahSetup2024",
+          hint: "Jalankan: https://dev.legalpilar.id/v2/android/dokasah/setup.php?key=DokasahSetup2024",
         },
         { status: 502 }
       );

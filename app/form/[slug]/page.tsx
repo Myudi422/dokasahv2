@@ -146,9 +146,41 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
       setFileUrls((p) => {
         const next = { ...p };
         delete next[fieldName];
-        saveDraft(values, next);
         return next;
       });
+      setValues((p) => {
+        const next = { ...p };
+        delete next[fieldName];
+        return next;
+      });
+      setUploadProgress((p) => {
+        const next = { ...p };
+        delete next[fieldName];
+        return next;
+      });
+
+      // Call backend API in the background to delete from Backblaze and update database draft
+      fetch(`${API_BASE}/api/upload/delete.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, fieldName }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error(`Gagal menghapus file di server (HTTP ${res.status}):`, errText);
+          } else {
+            const data = await res.json();
+            if (data.success) {
+              console.log("Berkas berhasil dihapus dari Backblaze B2 dan database.");
+            } else {
+              console.error("Gagal menghapus berkas:", data.message);
+            }
+          }
+        })
+        .catch((err) => {
+          console.error("Gagal menghubungi server untuk menghapus berkas:", err);
+        });
       return; 
     }
     
@@ -730,7 +762,11 @@ function FormField({
             </div>
             {!disabled && (
               <button
-                onClick={() => onFileChange(null)}
+                onClick={() => {
+                  if (window.confirm("Apakah Anda yakin ingin menghapus berkas ini? File ini juga akan dihapus secara permanen dari server penyimpanan (Backblaze).")) {
+                    onFileChange(null);
+                  }
+                }}
                 className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 type="button"
               >

@@ -96,6 +96,85 @@ function uploadToB2(string $fileContent, string $contentType, string $remotePath
     return ['success' => false, 'error' => "Upload failed with HTTP $httpCode: $response"];
 }
 
+/**
+ * Delete a file from Backblaze B2 using the S3-compatible API with AWS Signature V4.
+ *
+ * @param string $remotePath    Path in bucket, e.g. "dokasah/berkas/slug/ktp.jpg"
+ * @return array{success: bool, error?: string}
+ */
+function deleteFromB2(string $remotePath): array {
+    $host       = B2_BUCKET . '.' . parse_url(B2_ENDPOINT, PHP_URL_HOST);
+    $url        = "https://$host/$remotePath";
+    $datetime   = gmdate('Ymd\THis\Z');
+    $date       = gmdate('Ymd');
+    $region     = B2_REGION;
+    $service    = 's3';
+
+    // Build canonical request
+    $payloadHash   = hash('sha256', '');
+    $canonicalUri  = '/' . implode('/', array_map('rawurlencode', explode('/', $remotePath)));
+    $canonicalQuery = '';
+    $canonicalHeaders = implode("\n", [
+        "host:$host",
+        "x-amz-content-sha256:$payloadHash",
+        "x-amz-date:$datetime",
+    ]) . "\n";
+    $signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+
+    $canonicalRequest = implode("\n", [
+        'DELETE',
+        $canonicalUri,
+        $canonicalQuery,
+        $canonicalHeaders,
+        $signedHeaders,
+        $payloadHash,
+    ]);
+
+    // Build string to sign
+    $credentialScope = "$date/$region/$service/aws4_request";
+    $stringToSign = implode("\n", [
+        'AWS4-HMAC-SHA256',
+        $datetime,
+        $credentialScope,
+        hash('sha256', $canonicalRequest),
+    ]);
+
+    // Calculate signature
+    $signingKey = hmacSha256("aws4_request",
+        hmacSha256($service,
+            hmacSha256($region,
+                hmacSha256($date, "AWS4" . B2_SECRET_KEY, true),
+            true),
+        true),
+    true);
+    $signature = bin2hex(hash_hmac('sha256', $stringToSign, $signingKey, true));
+
+    // Authorization header
+    $authorization = "AWS4-HMAC-SHA256 Credential=" . B2_ACCESS_KEY . "/$credentialScope, SignedHeaders=$signedHeaders, Signature=$signature";
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST  => 'DELETE',
+        CURLOPT_HTTPHEADER     => [
+            "Authorization: $authorization",
+            "x-amz-content-sha256: $payloadHash",
+            "x-amz-date: $datetime",
+        ],
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 204 || $httpCode === 200) {
+        return ['success' => true];
+    }
+
+    return ['success' => false, 'error' => "Delete failed with HTTP $httpCode: $response"];
+}
+
 function hmacSha256(string $data, string $key, bool $raw = false): string {
     return hash_hmac('sha256', $data, $key, $raw);
 }

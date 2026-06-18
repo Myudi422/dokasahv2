@@ -26,7 +26,7 @@ const nextConfig = {
     return [
       {
         source: '/php-api/:path*',
-        destination: 'https://ccgnimex.my.id/v2/android/dokasah/:path*',
+        destination: 'https://dev.legalpilar.id/v2/android/dokasah/:path*',
       },
     ]
   },

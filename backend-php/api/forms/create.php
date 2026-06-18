@@ -92,7 +92,7 @@ try {
         echo json_encode([
             'success' => false,
             'message' => 'Tabel form_structures belum dibuat. Jalankan setup.php terlebih dahulu!',
-            'hint'    => 'https://ccgnimex.my.id/v2/android/dokasah/setup.php?key=DokasahSetup2024',
+            'hint'    => 'https://dev.legalpilar.id/v2/android/dokasah/setup.php?key=DokasahSetup2024',
         ]);
         exit();
     }

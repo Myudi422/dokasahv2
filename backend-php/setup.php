@@ -1,7 +1,7 @@
 <?php
 // backend-php/setup.php
 // Setup otomatis: buat semua tabel + seed data
-// Akses: https://ccgnimex.my.id/v2/android/dokasah/setup.php?key=DokasahSetup2024
+// Akses: https://dev.legalpilar.id/v2/android/dokasah/setup.php?key=DokasahSetup2024
 // HAPUS FILE INI SETELAH SETUP!
 
 header("Content-Type: text/html; charset=UTF-8");
