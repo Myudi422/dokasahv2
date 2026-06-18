@@ -1,920 +1,855 @@
 "use client";
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useAuth, useAuthRedirect } from '@/components/AuthContext';
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileUpload } from "@/components/FileUpload";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import MultiSelect from '@/components/MultiSelect';
-import LocationSearch from '@/components/LocationSearch';
-import { jsPDF } from 'jspdf';
 
+import { useState, useEffect, useCallback, use } from "react";
+import { 
+  CheckCircle2, 
+  Upload, 
+  X, 
+  AlertCircle, 
+  Save, 
+  Send, 
+  FileText, 
+  Phone, 
+  ChevronRight,
+  ArrowLeft,
+  Info
+} from "lucide-react";
+import Link from "next/link";
 
-export default function FormPage() {
-  const { slug } = useParams();
-  const router = useRouter();
-  const { token, user, isAuthLoaded } = useAuth();
-  useAuthRedirect();
+const API_BASE = "/api/php";
 
-  const [formData, setFormData] = useState({});
-  const [submissionStatus, setSubmissionStatus] = useState('draft');
-  const [formConfig, setFormConfig] = useState(null);
-  const [isLoadingForm, setIsLoadingForm] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const [isFirstSubmit, setIsFirstSubmit] = useState(true);
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface FormField {
+  name: string;
+  label: string;
+  type: "text" | "email" | "tel" | "number" | "textarea" | "select" | "file";
+  required?: boolean;
+  maxLength?: number;
+  placeholder?: string;
+  options?: string[];
+  accept?: string;
+  description?: string;
+  prefix?: string;
+}
 
-  // Form dapat diedit jika statusnya 'draft', null, atau 'submitted'
-  const isEditable = submissionStatus === 'draft' || submissionStatus === 'submitted' || submissionStatus === null;
+interface FormSection {
+  id: string;
+  title: string;
+  note?: string | null;
+  fields: FormField[];
+}
 
+interface FormData {
+  id: number;
+  form_type: string;
+  form_label: string;
+  form_description: string;
+  assigned_email: string;
+  slug: string;
+  note: string;
+  form_structure: { sections: FormSection[] };
+  created_at: string;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export default function FormPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
+
+  const [form, setForm] = useState<FormData | null>(null);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<Record<string, File | null>>({});
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
+  const [uploadProgress, setUploadProgress] = useState<Record<string, "idle" | "uploading" | "done" | "error">>({});
+  const [status, setStatus] = useState<string>("draft");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [activeSection, setActiveSection] = useState(0);
+  const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+
+  // ── Load form data ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!slug || !token) return;
-
-    const fetchForm = async () => {
-      try {
-        setIsLoadingForm(true);
-        const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || 'Form tidak ditemukan');
-        }
-
-        const data = await res.json();
-        const loadedConfig = {
-          ...data.form,
-          title: data.form.form_structure.title,
-          fields: data.form.form_structure?.fields || []
-        };
-
-        // Jika ada field multi-select dengan options_url, load opsi KBLI
-        const updatedFields = await Promise.all(
-          loadedConfig.fields.map(async (field) => {
-            if (field.type === 'multi-select' && field.options_url) {
-              const res = await fetch(field.options_url);
-              const json = await res.json();
-              field.options = (json.data || json).map(item => ({
-                value: item.Kode,
-                label: `${item.Kode} - ${item.Judul}`
-              }));
-            }
-            return field;
-          })
-        );
-        loadedConfig.fields = updatedFields;
-
-        setFormConfig(loadedConfig);
-        setFormData(data.submission?.data || {});
-        setSubmissionStatus(data.submission?.status || 'draft');
-      } catch (error) {
-        setErrorMessage(error.message);
-      } finally {
-        setIsLoadingForm(false);
-      }
-    };
-
-    fetchForm();
-  }, [slug, token]);
-
-
-// Helper untuk load, mengkompres, dan mengubah ukuran gambar
-const loadImageWithDimensions = (url, scaleFactor = 0.5, quality = 0.7) => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      // Ubah ukuran gambar berdasarkan scale factor
-      canvas.width = img.width * scaleFactor;
-      canvas.height = img.height * scaleFactor;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // Konversi ke JPEG dengan kualitas yang diatur (0 sampai 1)
-      const dataUrl = canvas.toDataURL('image/jpeg', quality);
-      resolve({ dataUrl, width: canvas.width, height: canvas.height });
-    };
-    img.onerror = () => reject(new Error('Could not load image'));
-    img.src = url;
-  });
-};
-
-// Tambahkan fungsi untuk menambah item grup
-const addGroupItem = (groupFieldName, groupFields) => {
-  const newItem = {};
-  groupFields.forEach(subField => {
-    newItem[subField.name] = '';
-  });
-  setFormData(prev => ({
-    ...prev,
-    [groupFieldName]: [...(prev[groupFieldName] || []), newItem]
-  }));
-};
-
-// Fungsi untuk menghapus item grup
-const removeGroupItem = (groupFieldName, index) => {
-  const groupValues = formData[groupFieldName] || [];
-  groupValues.splice(index, 1);
-  setFormData(prev => ({
-    ...prev,
-    [groupFieldName]: [...groupValues]
-  }));
-};
-
-const uploadFileForRepeat = async (groupFieldName, index, subFieldName, file) => {
-  try {
-    // Membuat nama file unik dengan menambahkan indeks (_1, _2, dst)
-    const uniqueFileName = `${groupFieldName}_${subFieldName}_${index + 1}`;
-    const filePath = await uploadFile(uniqueFileName, file);
-    const groupValues = formData[groupFieldName] || [];
-    groupValues[index][subFieldName] = filePath;
-    setFormData(prev => ({
-      ...prev,
-      [groupFieldName]: [...groupValues]
-    }));
-  } catch (error) {
-    console.error('Error saat upload file untuk pengurus:', error);
-  }
-};
-
-
-
-const generatePDF = async () => {
-  if (!formConfig) return;
-  const doc = new jsPDF();
-
-  // Margin
-  const leftMargin = 20, rightMargin = 20, topMargin = 60, bottomMargin = 30;
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const effectiveWidth = pageWidth - leftMargin - rightMargin;
-  let y = topMargin;
-
-  // URL template PNG full A4
-  const templateUrl = "https://file.ccgnimex.my.id/file/ccgnimex/dokasah/berkas/Branding%20Dokasah/surat-2.png";
-
-  // Fungsi kompres gambar (template)
-  const compressImage = async (imageUrl, maxWidth = 1080, quality = 0.9) => {
-    try {
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.src = imageUrl;
-      return new Promise((resolve) => {
-        img.onload = () => {
-          let width = img.width;
-          let height = img.height;
-          if (width > maxWidth) {
-            const scaleFactor = maxWidth / width;
-            width = maxWidth;
-            height = height * scaleFactor;
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve({
-            dataUrl: canvas.toDataURL("image/jpeg", quality),
-            width: img.width,
-            height: img.height
-          });
-        };
-      });
-    } catch (error) {
-      console.error("Gagal memproses gambar:", error);
-      return null;
-    }
-  };
-
-  // Kompres template cover
-  const templateImageObj = await compressImage(templateUrl, 1080, 1.0);
-  const templateImage = templateImageObj ? templateImageObj.dataUrl : null;
-
-  // Fungsi untuk menambahkan template ke halaman
-  const addTemplate = () => {
-    if (templateImage) {
-      doc.addImage(templateImage, "JPEG", 0, 0, pageWidth, pageHeight);
-    }
-  };
-
-  // Halaman pertama
-  addTemplate();
-
-  // Judul Form
-  doc.setFontSize(16);
-  const titleLines = doc.splitTextToSize(formConfig.title, effectiveWidth);
-  titleLines.forEach((line) => {
-    if (y > pageHeight - bottomMargin) {
-      doc.addPage();
-      addTemplate();
-      y = topMargin;
-    }
-    doc.text(line, leftMargin, y);
-    y += 10;
-  });
-  y += 5;
-
-  // Konten form
-  doc.setFontSize(12);
-
-  // Fungsi helper untuk cek page break
-  const checkPageBreak = () => {
-    if (y > pageHeight - bottomMargin) {
-      doc.addPage();
-      addTemplate();
-      y = topMargin;
-    }
-  };
-
-  for (const field of formConfig.fields) {
-    const value = formData[field.name] || "";
-
-    // 1. Field bertipe array (repeat)
-    if (Array.isArray(value)) {
-      checkPageBreak();
-      doc.text(`${field.label}:`, leftMargin, y);
-      y += 6;
-
-      value.forEach((groupItem, index) => {
-        checkPageBreak();
-        // Tambahkan heading untuk item repeat (opsional)
-        doc.text(`Item #${index + 1}`, leftMargin + 5, y);
-        y += 6;
-
-        // Loop subfield
-        if (typeof groupItem === "object" && groupItem !== null) {
-          for (const [key, val] of Object.entries(groupItem)) {
-            checkPageBreak();
-            if (typeof val === "string") {
-              // Jika file gambar
-              if (val.match(/\.(jpeg|jpg|png|gif)$/i)) {
-                const labelText = `- ${key}: `;
-                doc.text(labelText + "klik disini", leftMargin + 10, y);
-                doc.textWithLink(
-                  "klik disini",
-                  leftMargin + 10 + doc.getTextWidth(labelText),
-                  y,
-                  { url: val, target: "_blank" }
-                );
-                y += 10;
+    if (!slug) return;
+    fetch(`${API_BASE}/api/forms/detail.php?slug=${slug}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setForm(data.form);
+          if (data.submission) {
+            const d = data.submission.data || {};
+            setValues(d);
+            setStatus(data.submission.status);
+            if (data.submission.status === "submitted") setIsSubmitted(true);
+            // Restore file URLs from saved data
+            const urls: Record<string, string> = {};
+            Object.entries(d).forEach(([k, v]) => {
+              if (typeof v === "string" && v.startsWith("http")) {
+                const field = data.form.form_structure?.sections
+                  ?.flatMap((s: FormSection) => s.fields)
+                  .find((f: FormField) => f.name === k);
+                if (field?.type === "file") urls[k] = v as string;
               }
-              // Jika file PDF
-              else if (val.toLowerCase().endsWith(".pdf")) {
-                const labelText = `- ${key}: `;
-                doc.text(labelText + "klik disini", leftMargin + 10, y);
-                doc.textWithLink(
-                  "klik disini",
-                  leftMargin + 10 + doc.getTextWidth(labelText),
-                  y,
-                  { url: val, target: "_blank" }
-                );
-                y += 10;
-              }
-              // Teks biasa
-              else {
-                const textToPrint = `- ${key}: ${val}`;
-                const textLines = doc.splitTextToSize(textToPrint, effectiveWidth);
-                textLines.forEach((line) => {
-                  checkPageBreak();
-                  doc.text(line, leftMargin + 10, y);
-                  y += 6;
-                });
-              }
-            } else {
-              // Jika bukan string (misal number)
-              const textToPrint = `- ${key}: ${val}`;
-              const textLines = doc.splitTextToSize(textToPrint, effectiveWidth);
-              textLines.forEach((line) => {
-                checkPageBreak();
-                doc.text(line, leftMargin + 10, y);
-                y += 6;
-              });
-            }
+            });
+            setFileUrls(urls);
           }
         } else {
-          // Jika item array hanya berupa string/number
-          const textToPrint = `- ${groupItem}`;
-          const textLines = doc.splitTextToSize(textToPrint, effectiveWidth);
-          textLines.forEach((line) => {
-            checkPageBreak();
-            doc.text(line, leftMargin + 10, y);
-            y += 6;
-          });
+          setError(data.message || "Formulir tidak ditemukan.");
         }
+      })
+      .catch(() => setError("Tidak dapat memuat formulir."))
+      .finally(() => setIsLoading(false));
+  }, [slug]);
 
-        // Jarak setelah satu item repeat
-        y += 8;
-      });
-
-      // Jarak setelah field repeat
-      y += 5;
-      continue;
-    }
-
-    // 2. Field file gambar (non-array)
-    if (typeof value === "string" && value.match(/\.(jpeg|jpg|png|gif)$/i)) {
-      checkPageBreak();
-      const labelText = `${field.label}: `;
-      doc.text(labelText + "klik disini", leftMargin, y);
-      doc.textWithLink(
-        "klik disini",
-        leftMargin + doc.getTextWidth(labelText),
-        y,
-        { url: value, target: "_blank" }
-      );
-      y += 10;
-      continue;
-    }
-
-    // 3. Field file PDF (non-array)
-    if (typeof value === "string" && value.toLowerCase().endsWith(".pdf")) {
-      checkPageBreak();
-      const labelText = `${field.label}: `;
-      doc.text(labelText + "klik disini", leftMargin, y);
-      doc.textWithLink(
-        "klik disini",
-        leftMargin + doc.getTextWidth(labelText),
-        y,
-        { url: value, target: "_blank" }
-      );
-      y += 10;
-      continue;
-    }
-
-    // 4. Field biasa (text, number, dsb.)
-    checkPageBreak();
-    const text = `${field.label}: ${value}`;
-    const textLines = doc.splitTextToSize(text, effectiveWidth);
-    textLines.forEach((line) => {
-      checkPageBreak();
-      doc.text(line, leftMargin, y);
-      y += 6;
-    });
-    y += 4;
-  }
-
-  // Simpan PDF
-  doc.save(`${formConfig.title}.pdf`);
-};
-
-
-
-
-
-  
-
-  // Fungsi upload file ke backend
-  const uploadFile = async (fieldName, file) => {
-    const formPayload = new FormData();
-    formPayload.append('slug', slug);
-    formPayload.append('fieldName', fieldName);
-    formPayload.append('file', file);
-
+  // ── Auto-save draft ────────────────────────────────────────────────────────
+  const saveDraft = useCallback(async (vals: Record<string, string>, urls: Record<string, string>) => {
+    if (!slug) return;
+    setSaveStatus("saving");
+    const mergedData = { ...vals, ...urls };
     try {
-      const res = await fetch(`https://dev.dokasah.web.id/api/upload`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formPayload,
+      const res = await fetch(`${API_BASE}/api/forms/draft.php`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, data: mergedData }),
       });
-
-      const contentType = res.headers.get("content-type") || "";
-      
-      if (!res.ok) {
-        let errorMessage = 'Gagal mengupload file';
-        if (contentType.includes("application/json")) {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorMessage;
-        } else {
-          const errorText = await res.text();
-          errorMessage = errorText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      if (contentType.includes("application/json")) {
-        const data = await res.json();
-        return data.fileUrl;
+      if (res.ok) {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2500);
       } else {
-        const text = await res.text();
-        throw new Error(`Respons tidak valid JSON: ${text}`);
+        setSaveStatus("error");
       }
-    } catch (error) {
-      console.error("Upload error:", error);
-      throw error;
+    } catch {
+      setSaveStatus("error");
     }
-  };
+  }, [slug]);
 
-  const handleFileChange = async (name, file) => {
-    try {
-      const filePath = await uploadFile(name, file);
-      setFormData(prev => ({ ...prev, [name]: filePath }));
-    } catch (error) {
-      console.error('Error saat upload file:', error);
-    }
-  };
-
-  // Simpan draft otomatis
-  const saveDraft = async () => {
-    try {
-      setIsSavingDraft(true);
-      const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/draft`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ data: formData })
+  const handleChange = (name: string, value: string) => {
+    const next = { ...values, [name]: value };
+    setValues(next);
+    // Clear field-specific error if user has typed something
+    if (stepErrors[name]) {
+      setStepErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
       });
-
-      if (!res.ok) throw new Error('Gagal menyimpan draft');
-    } catch (error) {
-      console.error('Error saving draft:', error);
-    } finally {
-      setIsSavingDraft(false);
     }
+    // Auto save draft after small delay
+    saveDraft(next, fileUrls);
   };
 
-  useEffect(() => {
-    if (Object.keys(formData).length > 0 && submissionStatus === 'draft') {
-      const timeoutId = setTimeout(() => {
-        saveDraft();
-      }, 2000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [formData]);
-
-  const handleEdit = async () => {
-    try {
-      const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'draft' })
+  // ── File upload ────────────────────────────────────────────────────────────
+  const handleFileChange = async (fieldName: string, file: File | null) => {
+    if (!file) { 
+      setFiles((p) => ({ ...p, [fieldName]: null })); 
+      setFileUrls((p) => {
+        const next = { ...p };
+        delete next[fieldName];
+        saveDraft(values, next);
+        return next;
       });
-      if (res.ok) {
-        setSubmissionStatus('draft');
-        setIsEditing(true);
-      }
-    } catch (error) {
-      console.error('Gagal mengaktifkan edit:', error);
+      return; 
     }
-  };
+    
+    setFiles((p) => ({ ...p, [fieldName]: file }));
+    setUploadProgress((p) => ({ ...p, [fieldName]: "uploading" }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("slug", slug);
+    fd.append("fieldName", fieldName);
+
     try {
-      const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/submit`, {
+      const res = await fetch(`${API_BASE}/api/upload/index.php`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ data: formData }),
+        body: fd,
       });
-      if (res.ok) {
-        setSubmissionStatus("submitted");
-        setIsEditing(false);
-        if (isFirstSubmit) {
-          setShowPopup(true);
-          setIsFirstSubmit(false);
+      const data = await res.json();
+      if (data.success) {
+        setFileUrls((p) => {
+          const next = { ...p, [fieldName]: data.fileUrl };
+          saveDraft(values, next);
+          return next;
+        });
+        setUploadProgress((p) => ({ ...p, [fieldName]: "done" }));
+        if (stepErrors[fieldName]) {
+          setStepErrors((prev) => {
+            const copy = { ...prev };
+            delete copy[fieldName];
+            return copy;
+          });
+        }
+      } else {
+        setUploadProgress((p) => ({ ...p, [fieldName]: "error" }));
+      }
+    } catch {
+      setUploadProgress((p) => ({ ...p, [fieldName]: "error" }));
+    }
+  };
+
+  // ── Step Validation ────────────────────────────────────────────────────────
+  const validateCurrentStep = (stepIdx: number): boolean => {
+    const sections = form?.form_structure?.sections ?? [];
+    if (stepIdx >= sections.length) return true; // Review step
+
+    const currentSection = sections[stepIdx];
+    const errors: Record<string, string> = {};
+
+    currentSection.fields.forEach((field) => {
+      if (field.required) {
+        if (field.type === "file") {
+          if (!fileUrls[field.name]) {
+            errors[field.name] = `${field.label} wajib diunggah.`;
+          }
+        } else {
+          if (!values[field.name] || !values[field.name].trim()) {
+            errors[field.name] = `${field.label} wajib diisi.`;
+          }
         }
       }
-    } catch (error) {
-      console.error("Submission error:", error);
+    });
+
+    setStepErrors(errors);
+    
+    const hasErrors = Object.keys(errors).length > 0;
+    if (hasErrors) {
+      // Find the first error element and scroll to it
+      const firstErrField = Object.keys(errors)[0];
+      const el = document.getElementById(`field-container-${firstErrField}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    return !hasErrors;
+  };
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    const sections = form?.form_structure?.sections ?? [];
+    
+    // Final check for all steps
+    for (let i = 0; i < sections.length; i++) {
+      if (!validateCurrentStep(i)) {
+        setActiveSection(i);
+        setError("Harap lengkapi semua field wajib sebelum mengirimkan formulir.");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const mergedData = { ...values, ...fileUrls };
+      const res = await fetch(`${API_BASE}/api/forms/submit.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, data: mergedData }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsSubmitted(true);
+        setStatus("submitted");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        setError(data.message || "Gagal mengirim formulir.");
+      }
+    } catch {
+      setError("Tidak dapat menghubungi server. Silakan coba beberapa saat lagi.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // Callback untuk update lokasi dari API pos
-  const handleLocationSelect = (location) => {
-    setFormData(prev => ({
-      ...prev,
-      desa_kelurahan: location.village,
-      kecamatan: location.district,
-      kabupaten_kota: location.regency,
-      provinsi: location.province,
-      kode_pos: location.code, // Asumsi 'code' adalah kode pos
-    }));
-  };
-
-  if (!user || !isAuthLoaded || isLoadingForm) {
+  // ─── Loading ──────────────────────────────────────────────────────────────
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mx-auto" />
+          <p className="text-slate-400 text-sm font-medium">Memuat formulir...</p>
         </div>
       </div>
     );
   }
 
-  if (errorMessage) {
+  if (error && !form) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-sm text-red-500">{errorMessage}</p>
-        <Button onClick={() => router.push("/dashboard")}>Kembali</Button>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center space-y-4 bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 shadow-lg">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-950/20 rounded-full flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Formulir Tidak Ditemukan</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{error}</p>
+          <button 
+            onClick={() => window.location.href = "https://dokasah.web.id"} 
+            className="inline-flex items-center justify-center px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+          >
+            Kembali ke Beranda
+          </button>
+        </div>
       </div>
     );
   }
 
-  if (!formConfig || !Array.isArray(formConfig.fields)) {
+  const sections = form?.form_structure?.sections ?? [];
+
+  // ─── Success state ────────────────────────────────────────────────────────
+  if (isSubmitted) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-sm text-muted-foreground">Memuat formulir...</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
+        <div className="max-w-lg w-full text-center space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-8 sm:p-10 border border-slate-200/60 dark:border-slate-800/80">
+            <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 ring-8 ring-green-500/5">
+              <CheckCircle2 className="w-10 h-10 text-green-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Formulir Berhasil Terkirim!</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-md mx-auto">
+              Terima kasih! Seluruh data dan dokumen Anda telah berhasil kami terima. Tim analis Dokasah akan segera memproses pengajuan Anda.
+            </p>
+            
+            <div className="mt-8 p-5 bg-blue-50/50 dark:bg-blue-950/10 rounded-2xl border border-blue-100/60 dark:border-blue-900/30 text-left">
+              <h3 className="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider mb-2">Alur Langkah Selanjutnya</h3>
+              <ul className="text-sm text-slate-600 dark:text-slate-300 space-y-2.5">
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                  <span><strong>Validasi Dokumen</strong>: Tim analis kami memeriksa kelayakan data & berkas dalam 1x24 jam.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                  <span><strong>Konfirmasi WhatsApp</strong>: Anda akan menerima notifikasi status pengajuan melalui WhatsApp resmi kami.</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                  <span><strong>Draft Akta & Izin</strong>: Setelah dokumen divalidasi, draft akta pendirian/izin usaha akan kami kirim untuk review Anda.</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-3 justify-center">
+              <a
+                href={`https://wa.me/6287767518217?text=Halo%20Dokasah,%20saya%20sudah%20mengisi%20formulir%20${encodeURIComponent(form?.form_label ?? "")}.%20Mohon%20info%20proses%20selanjutnya.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-colors text-sm shadow-md shadow-green-500/10"
+              >
+                <Phone className="w-4 h-4" />
+                Hubungi CS WhatsApp
+              </a>
+              <button
+                onClick={() => window.location.href = "https://dokasah.web.id"}
+                className="px-6 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-semibold transition-colors text-sm"
+              >
+                Kembali ke Beranda
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
+    );
+  }
+
+  // ─── Form UI ──────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/80 shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+              <span className="text-white font-bold text-xs">D</span>
+            </div>
+            <div>
+              <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">Dokasah</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">Pengisian Formulir Publik</p>
+            </div>
+          </div>
+          
+          {/* Subtle auto-save status indicator */}
+          <div className="flex items-center gap-2">
+            {saveStatus === "saving" && (
+              <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                Menyimpan...
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                Draf Disimpan
+              </span>
+            )}
+            {saveStatus === "error" && (
+              <span className="text-xs text-red-500 flex items-center gap-1.5 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                Gagal Simpan
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-2xl w-full mx-auto px-4 py-8 flex-1 pb-32">
+        {/* Title Card */}
+        <div className="mb-8 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden border border-slate-800">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
+          <div className="relative z-10 space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold uppercase tracking-wider border border-blue-500/20">
+              <FileText className="w-3.5 h-3.5" />
+              Layanan Legalitas Resmi
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{form?.form_label}</h1>
+            {form?.form_description && (
+              <p className="text-xs text-slate-300 leading-relaxed">{form.form_description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Visual Stepper Navigation ───────────────────────────────────────── */}
+        {sections.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 p-5 mb-8 shadow-sm">
+            <div className="flex items-center justify-between relative">
+              {/* Connector Lines */}
+              <div className="absolute top-[18px] left-[5%] right-[5%] h-[2px] bg-slate-100 dark:bg-slate-800 z-0" />
+              <div 
+                className="absolute top-[18px] left-[5%] h-[2px] bg-gradient-to-r from-blue-500 to-indigo-600 z-0 transition-all duration-500"
+                style={{ width: `${(Math.min(activeSection, sections.length) / sections.length) * 90}%` }}
+              />
+
+              {sections.map((sec, idx) => {
+                const isCompleted = idx < activeSection;
+                const isActive = idx === activeSection;
+                return (
+                  <button
+                    key={sec.id}
+                    onClick={() => {
+                      if (idx < activeSection) {
+                        setActiveSection(idx);
+                        setError("");
+                      } else if (idx > activeSection) {
+                        // Validate previous steps before jumping forward
+                        let canJump = true;
+                        for (let j = activeSection; j < idx; j++) {
+                          if (!validateCurrentStep(j)) {
+                            canJump = false;
+                            break;
+                          }
+                        }
+                        if (canJump) {
+                          setActiveSection(idx);
+                          setError("");
+                        }
+                      }
+                    }}
+                    className="relative z-10 flex flex-col items-center group focus:outline-none"
+                    style={{ flex: 1 }}
+                  >
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
+                      isCompleted 
+                        ? "bg-green-500 border-green-500 text-white shadow-md shadow-green-500/10" 
+                        : isActive
+                        ? "bg-blue-600 border-blue-600 text-white ring-4 ring-blue-500/10 shadow-md shadow-blue-500/10"
+                        : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400"
+                    }`}>
+                      {isCompleted ? <CheckCircle2 className="w-4.5 h-4.5" /> : idx + 1}
+                    </div>
+                    <span className={`text-[10px] mt-2 font-medium transition-colors hidden sm:block ${
+                      isActive ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-slate-400"
+                    }`}>
+                      {sec.title}
+                    </span>
+                  </button>
+                );
+              })}
+
+              {/* Review Step Button */}
+              <button
+                onClick={() => {
+                  let canJump = true;
+                  for (let j = activeSection; j < sections.length; j++) {
+                    if (!validateCurrentStep(j)) {
+                      canJump = false;
+                      break;
+                    }
+                  }
+                  if (canJump) {
+                    setActiveSection(sections.length);
+                    setError("");
+                  }
+                }}
+                disabled={activeSection < sections.length - 1}
+                className="relative z-10 flex flex-col items-center group focus:outline-none"
+                style={{ flex: 1 }}
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300 ${
+                  activeSection === sections.length
+                    ? "bg-blue-600 border-blue-600 text-white ring-4 ring-blue-500/10 shadow-md shadow-blue-500/10"
+                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400"
+                }`}>
+                  <FileText className="w-4.5 h-4.5" />
+                </div>
+                <span className={`text-[10px] mt-2 font-medium transition-colors hidden sm:block ${
+                  activeSection === sections.length ? "text-blue-600 dark:text-blue-400 font-semibold" : "text-slate-400"
+                }`}>
+                  Tinjau Data
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Global Error Banner */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 rounded-2xl text-sm text-red-600 dark:text-red-400 flex items-start gap-2.5">
+            <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+            <div className="font-medium">{error}</div>
+          </div>
+        )}
+
+        {/* Admin/User note if present */}
+        {form?.note && activeSection === 0 && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl text-xs text-amber-800 dark:text-amber-400 flex gap-2.5 items-start">
+            <Info className="w-4.5 h-4.5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Catatan Khusus: </span>
+              {form.note}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Render Current Step Section ────────────────────────────────────── */}
+        {activeSection < sections.length ? (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm overflow-hidden transition-all duration-300">
+              {/* Section Header */}
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
+                <h2 className="font-bold text-slate-800 dark:text-white text-base leading-tight">
+                  {sections[activeSection].title}
+                </h2>
+                {sections[activeSection].note && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {sections[activeSection].note}
+                  </p>
+                )}
+              </div>
+
+              {/* Fields inside Section */}
+              <div className="p-6 space-y-6">
+                {sections[activeSection].fields.map((field) => (
+                  <div key={field.name} id={`field-container-${field.name}`}>
+                    <FormField
+                      field={field}
+                      value={values[field.name] ?? ""}
+                      fileUrl={fileUrls[field.name]}
+                      uploadStatus={uploadProgress[field.name] ?? "idle"}
+                      onChange={(v) => handleChange(field.name, v)}
+                      onFileChange={(f) => handleFileChange(field.name, f)}
+                      disabled={isSubmitted}
+                      error={stepErrors[field.name]}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ─── Render Review Section ───────────────────────────────────────── */
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm overflow-hidden p-6 sm:p-8">
+              <h2 className="text-lg font-bold text-slate-850 dark:text-white mb-2 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <FileText className="w-5.5 h-5.5 text-blue-500" />
+                Tinjau Seluruh Informasi Anda
+              </h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-6">
+                Silakan lakukan verifikasi atas seluruh informasi dan berkas dokumen di bawah ini. Jika ada yang salah, klik tombol "Kembali" untuk mengeditnya.
+              </p>
+
+              <div className="space-y-6">
+                {sections.map((section, sIdx) => (
+                  <div key={section.id} className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-xs font-bold text-blue-650 dark:text-blue-400 uppercase tracking-wider">
+                        {section.title}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          setStepErrors({});
+                          setActiveSection(sIdx);
+                        }}
+                        className="text-xs text-slate-450 hover:text-blue-600 hover:underline font-medium"
+                      >
+                        Ubah
+                      </button>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-100 dark:border-slate-900 space-y-3">
+                      {section.fields.map((field) => {
+                        const val = field.type === "file" ? fileUrls[field.name] : values[field.name];
+                        return (
+                          <div key={field.name} className="flex flex-col sm:flex-row sm:justify-between sm:items-start text-xs py-1.5 border-b border-slate-200/40 dark:border-slate-800/40 last:border-0 gap-1.5">
+                            <span className="text-slate-500 dark:text-slate-400 shrink-0 font-medium">{field.label}</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-250 break-all text-left sm:text-right">
+                              {field.type === "file" ? (
+                                val ? (
+                                  <a href={val} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1">
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Lihat Berkas Dokumen ↑
+                                  </a>
+                                ) : (
+                                  <span className="text-red-500 font-medium">Belum diunggah</span>
+                                )
+                              ) : val || "–"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ── Sticky Navigation Bottom Bar ───────────────────────────────────────── */}
+      {!isSubmitted && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/80 shadow-lg z-10 transition-colors duration-300">
+          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+            {activeSection > 0 && (
+              <button
+                onClick={() => {
+                  setStepErrors({});
+                  setActiveSection((p) => p - 1);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-250 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Kembali
+              </button>
+            )}
+
+            {activeSection < sections.length ? (
+              <button
+                onClick={() => {
+                  if (validateCurrentStep(activeSection)) {
+                    setActiveSection((p) => p + 1);
+                    setError("");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                }}
+                className="flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-500/10 transition-colors"
+              >
+                Langkah Selanjutnya
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-[2] flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-650 hover:from-blue-750 hover:to-indigo-750 text-white text-sm font-semibold shadow-md shadow-blue-500/20 transition-all disabled:opacity-60"
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Mengirim Formulir...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Kirim Formulir Final
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+          <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 pb-2">
+            Perubahan Anda otomatis disimpan sebagai draf
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FormField component ──────────────────────────────────────────────────────
+function FormField({
+  field,
+  value,
+  fileUrl,
+  uploadStatus,
+  onChange,
+  onFileChange,
+  disabled,
+  error,
+}: {
+  field: FormField;
+  value: string;
+  fileUrl?: string;
+  uploadStatus: "idle" | "uploading" | "done" | "error";
+  onChange: (v: string) => void;
+  onFileChange: (f: File | null) => void;
+  disabled: boolean;
+  error?: string;
+}) {
+  const borderClass = error 
+    ? "border-red-400 dark:border-red-500 focus:ring-red-500/20 focus:border-red-500" 
+    : "border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500 dark:focus:border-blue-500";
+
+  const baseClass = `w-full px-4 py-2.5 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 dark:disabled:bg-slate-900/50 ${
+    disabled ? "bg-slate-50 dark:bg-slate-900/50 cursor-not-allowed" : "bg-white dark:bg-slate-900"
+  } ${borderClass}`;
+
+  if (field.type === "file") {
+    return (
+      <div className="space-y-1.5">
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          {field.label}
+          {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
+        </label>
+        {field.description && (
+          <p className="text-xs text-slate-450 dark:text-slate-500 leading-normal">{field.description}</p>
+        )}
+
+        {fileUrl && uploadStatus !== "uploading" ? (
+          <div className="flex items-center gap-3 p-3.5 bg-green-50/60 dark:bg-green-950/10 border border-green-200/60 dark:border-green-900/30 rounded-xl">
+            <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-green-700 dark:text-green-400 font-semibold">Berkas Berhasil Diunggah</p>
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline truncate block font-medium mt-0.5"
+              >
+                Lihat file saat ini →
+              </a>
+            </div>
+            {!disabled && (
+              <button
+                onClick={() => onFileChange(null)}
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                type="button"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <label className={`flex flex-col items-center justify-center gap-2.5 p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+            uploadStatus === "uploading"
+              ? "border-blue-400 bg-blue-50/30 dark:bg-blue-950/10"
+              : uploadStatus === "error" || error
+              ? "border-red-400 bg-red-50/20 dark:bg-red-950/5"
+              : "border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-550 hover:bg-blue-50/10 dark:hover:bg-blue-950/5"
+          } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
+            <input
+              type="file"
+              accept={field.accept || "image/*,.pdf"}
+              onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+              disabled={disabled || uploadStatus === "uploading"}
+              className="sr-only"
+            />
+            {uploadStatus === "uploading" ? (
+              <>
+                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Sedang mengunggah dokumen...</p>
+              </>
+            ) : uploadStatus === "error" ? (
+              <>
+                <X className="w-6 h-6 text-red-500" />
+                <p className="text-xs text-red-500 font-medium">Upload gagal. Silakan klik untuk coba lagi.</p>
+              </>
+            ) : (
+              <>
+                <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/30 rounded-xl flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="text-center space-y-0.5">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-350">Klik untuk pilih & unggah berkas</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">Mendukung Format JPG, PNG, PDF (Maks 5MB)</p>
+                </div>
+              </>
+            )}
+          </label>
+        )}
+        {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === "select") {
+    return (
+      <div className="space-y-1.5">
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          {field.label}
+          {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
+        </label>
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={field.required}
+          disabled={disabled}
+          className={baseClass}
+        >
+          <option value="">Pilih opsi...</option>
+          {field.options?.map((opt) => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+        {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <div className="space-y-1.5">
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          {field.label}
+          {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
+        </label>
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          required={field.required}
+          disabled={disabled}
+          rows={3}
+          className={`${baseClass} resize-none`}
+        />
+        {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{error}</p>}
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 md:p-8 space-y-6">
-      <Card>
-        <CardContent className="flex items-center justify-between p-4">
-          <h1 className="text-xl sm:text-2xl font-bold">{formConfig.title}</h1>
-          {submissionStatus === 'submitted' && !isEditing && isEditable && (
-            <button
-              type="button"
-              onClick={handleEdit}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              title="Edit Form"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Jika formulir tidak dapat diedit, tampilkan widget keterangan */}
-      {!isEditable && (
-        <div className="p-4 bg-yellow-100 text-yellow-800 rounded-md">
-          Formulir tidak bisa diubah, karena sudah dalam proses pengerjaan oleh tim kami
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {formConfig.fields.map((field) => {
-          // Gunakan LocationSearch untuk field desa_kelurahan
-          if (field.name === "desa_kelurahan") {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <LocationSearch onSelect={handleLocationSelect} />
-              </div>
-            );
-          }
-          // Untuk field lokasi lainnya, tampilkan input non-editable
-          if (
-            field.name === "kecamatan" ||
-            field.name === "kabupaten_kota" ||
-            field.name === "provinsi" ||
-            field.name === "kode_pos"
-          ) {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <Input
-                  type={field.name === "kode_pos" ? "number" : "text"}
-                  value={formData[field.name] || ''}
-                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                  required={field.required}
-                  className="w-full"
-                  disabled
-                />
-              </div>
-            );
-          }
-          // Render field lain sesuai tipe-nya
-          if (field.type === 'text') {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <Input
-                  type="text"
-                  value={formData[field.name] || ''}
-                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                  required={field.required}
-                  className="w-full"
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                />
-              </div>
-            );
-          }
-          if (field.type === 'textarea') {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <Textarea
-                  value={formData[field.name] || ''}
-                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                  required={field.required}
-                  className="w-full"
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                />
-              </div>
-            );
-          }
-          if (field.type === 'repeat') {
-            const groupValues = formData[field.name] || [];
-            return (
-              <div key={field.name} className="border p-4 rounded mb-4">
-                <label className="block mb-2 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                {groupValues.map((groupItem, index) => (
-                  <div key={index} className="border p-3 rounded mb-3">
-                    {field.fields.map((subField) => {
-                      const subFieldKey = `${field.name}-${index}-${subField.name}`;
-                      const value = groupItem[subField.name] || '';
-                      if (subField.type === 'text') {
-                        return (
-                          <div key={subFieldKey} className="mb-2">
-                            <label className="block mb-1 text-sm font-medium">
-                              {subField.label} {subField.required && <span className="text-red-500">*</span>}
-                            </label>
-                            <Input
-                              type="text"
-                              value={value}
-                              onChange={(e) => {
-                                const newGroupValues = [...groupValues];
-                                newGroupValues[index][subField.name] = e.target.value;
-                                setFormData({ ...formData, [field.name]: newGroupValues });
-                              }}
-                              required={subField.required}
-                              className="w-full"
-                              disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                            />
-                          </div>
-                        );
-                      }
-                      if (subField.type === 'file') {
-                        return (
-                          <div key={subFieldKey} className="mb-2 space-y-2">
-                            <label className="block mb-1 text-sm font-medium">
-                              {subField.label} {subField.required && <span className="text-red-500">*</span>}
-                            </label>
-                            <FileUpload
-                              accept={subField.accept}
-                              onFileSelect={(file) =>
-                                uploadFileForRepeat(field.name, index, subField.name, file)
-                              }
-                              className="w-full"
-                              disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                            />
-                            {value && (() => {
-  const fileUrl = value.trim();
-  const isPdf = fileUrl.split('?')[0].toLowerCase().endsWith('.pdf');
-  return isPdf ? (
-    <iframe
-      src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-      width="100%"
-      height="500px"
-      frameBorder="0"
-      title="PDF Preview"
-    >
-      <p>
-        Preview PDF tidak tersedia.{' '}
-        <a href={`${fileUrl}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
-          Download PDF
-        </a>
-      </p>
-    </iframe>
-  ) : (
-    <img
-      src={`${fileUrl}?t=${Date.now()}`}
-      alt="Preview"
-      className="max-w-xs mt-1"
-    />
-  );
-})()}
-
-                          </div>
-                        );
-                      }
-                      return null;
-                    })}
-                    <Button
-  type="button"
-  onClick={() => removeGroupItem(field.name, index)}
-  variant="outline"
-  className="mt-2"
-  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
->
-  Hapus
-</Button>
-
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  onClick={() => addGroupItem(field.name, field.fields)}
-                  className="mt-2"
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                >
-                  Tambah Pengurus
-                </Button>
-              </div>
-            );
-          }
-          
-          if (field.type === 'select') {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <Select 
-                  onValueChange={(value) => setFormData({ ...formData, [field.name]: value })}
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={`Pilih ${field.label}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((option, index) => {
-                      const optionValue = typeof option === 'string' ? option : option.value;
-                      const optionLabel = typeof option === 'string' ? option : option.label;
-                      return (
-                        <SelectItem key={`${optionValue}-${index}`} value={optionValue}>
-                          {optionLabel}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            );
-          }
-          if (field.type === 'multi-select') {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <MultiSelect
-                  options={field.options || []}
-                  placeholder={`Cari dan pilih ${field.label}`}
-                  value={formData[field.name] || []}
-                  onChange={(selectedValues) => setFormData({ ...formData, [field.name]: selectedValues })}
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                />
-              </div>
-            );
-          }
-          if (field.type === 'number') {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <Input
-                  type="number"
-                  value={formData[field.name] || ''}
-                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                  required={field.required}
-                  className="w-full"
-                  min={0}
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                />
-              </div>
-            );
-          }
-          if (field.type === 'date') {
-            return (
-              <div key={field.name}>
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <Input
-                  type="date"
-                  value={formData[field.name] || ''}
-                  onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                  required={field.required}
-                  className="w-full"
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                />
-              </div>
-            );
-          }
-          if (field.type === 'file') {
-            return (
-              <div key={field.name} className="space-y-2">
-                <label className="block mb-1 text-sm sm:text-base font-medium">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
-                <FileUpload
-                  accept={field.accept}
-                  onFileSelect={(file) => handleFileChange(field.name, file)}
-                  className="w-full"
-                  disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)}
-                />
-               {formData[field.name] && (() => {
-  const fileUrl = formData[field.name].trim();
-  const isPdf = fileUrl.split('?')[0].toLowerCase().endsWith('.pdf');
-  return isPdf ? (
-    <iframe
-      src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-      width="100%"
-      height="500px"
-      frameBorder="0"
-      title="PDF Preview"
-    >
-      <p>
-        Preview PDF tidak tersedia.{' '}
-        <a href={`${fileUrl}?t=${Date.now()}`} target="_blank" rel="noopener noreferrer">
-          Download PDF
-        </a>
-      </p>
-    </iframe>
-  ) : (
-    <img
-      src={`${fileUrl}?t=${Date.now()}`}
-      alt="Preview"
-      className="max-w-xs mt-1"
-    />
-  );
-})()}
-
-
-
-              </div>
-            );
-          }
-          return null;
-        })}
-
-        <div className="flex flex-col sm:flex-row justify-end gap-4">
-          {submissionStatus === 'submitted' && isEditing ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsEditing(false);
-                setSubmissionStatus('submitted');
-              }}
-              className="w-full sm:w-auto"
-            >
-              Batal Edit
-            </Button>
-          ) : submissionStatus === 'draft' ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              className="w-full sm:w-auto"
-            >
-              Batal
-            </Button>
-          ) : null}
-
-          <Button type="submit" disabled={!isEditable || (submissionStatus === 'submitted' && !isEditing)} className="w-full sm:w-auto">
-            {isSavingDraft && (
-              <span className="mr-2 h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-            )}
-            {submissionStatus === 'submitted' ? 'Telah Disubmit' : (isSavingDraft ? 'Menyimpan Draft...' : 'Submit')}
-          </Button>
-          {/* Kondisi untuk Generate PDF */}
-          {submissionStatus !== 'draft' && user?.role === 'admin' && (
-  <Button onClick={generatePDF}>Generate PDF</Button>
-)}
-
-        </div>
-      </form>
-
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Form Berhasil Dikirim! 🎉</DialogTitle>
-      <DialogDescription>
-        Data formulir telah berhasil dikirim. Anda dapat menutup halaman ini atau melakukan edit kembali dengan mengklik ikon pensil di pojok kanan atas.
-      </DialogDescription>
-    </DialogHeader>
-    <div className="flex justify-end gap-4">
-      <Button onClick={() => setShowPopup(false)}>Tutup</Button>
-    </div>
-  </DialogContent>
-</Dialog>
+    <div className="space-y-1.5">
+      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+        {field.label}
+        {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
+      </label>
+      <div className={field.prefix ? "flex items-center border rounded-xl overflow-hidden hover:border-slate-350 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all " + (error ? "border-red-400 focus-within:ring-red-500/20 focus-within:border-red-500" : "border-slate-200 dark:border-slate-800") : ""}>
+        {field.prefix && (
+          <span className="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-sm text-slate-500 dark:text-slate-400 font-semibold select-none">
+            {field.prefix}
+          </span>
+        )}
+        <input
+          type={field.type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder}
+          required={field.required}
+          disabled={disabled}
+          maxLength={field.maxLength}
+          className={field.prefix ? "flex-1 px-4 py-2.5 text-sm focus:outline-none bg-white dark:bg-slate-900 disabled:bg-slate-50 dark:disabled:bg-slate-900/50" : baseClass}
+        />
+      </div>
+      {error && <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-1">{error}</p>}
     </div>
   );
 }

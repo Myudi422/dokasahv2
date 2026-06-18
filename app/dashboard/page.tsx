@@ -1,637 +1,490 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import * as React from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import {
-  LayoutDashboard,
-  FileText,
-  Folder,
-  LogOut,
-  Menu,
-  MoreHorizontal,
-  FileArchive,
-  NotepadText,
-  LoaderIcon,
-  Users,
-  ChevronUp,
-  ChevronDown
-} from 'lucide-react'
-
-import CreateFormModal from "@/components/CreateFormModal"
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+  LayoutDashboard, FileText, Folder, LogOut, Menu, MoreHorizontal,
+  FileArchive, LoaderIcon, Users, ChevronUp, ChevronDown, Plus,
+  CheckCircle2, Clock, AlertCircle, TrendingUp, Copy, ExternalLink,
+  NotepadText, Trash2, RefreshCw,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useAuth, useAuthRedirect } from "@/components/AuthContext"
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth, useAuthRedirect } from "@/components/AuthContext";
+import CreateFormModal from "@/components/CreateFormModal";
 
+const API_BASE = "/api/php";
+
+// ─── Status helpers ──────────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+  draft:     { label: "Draft",     color: "text-slate-600", bg: "bg-slate-100",  icon: <Clock className="w-3 h-3" /> },
+  submitted: { label: "Submitted", color: "text-blue-600",  bg: "bg-blue-100",   icon: <FileText className="w-3 h-3" /> },
+  proses:    { label: "Proses",    color: "text-amber-600", bg: "bg-amber-100",  icon: <LoaderIcon className="w-3 h-3" /> },
+  review:    { label: "Review",    color: "text-purple-600",bg: "bg-purple-100", icon: <AlertCircle className="w-3 h-3" /> },
+  selesai:   { label: "Selesai",   color: "text-green-600", bg: "bg-green-100",  icon: <CheckCircle2 className="w-3 h-3" /> },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status?.toLowerCase()] ?? STATUS_CONFIG.draft;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color}`}>
+      {cfg.icon}{cfg.label}
+    </span>
+  );
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface FormItem {
+  id: number;
+  form_type: string;
+  form_label: string;
+  assigned_email: string;
+  slug: string;
+  note: string;
+  status: string;
+  link: string;
+  created_at: string;
+  last_updated: string | null;
+}
+
+interface Stats {
+  total: number;
+  draft: number;
+  submitted: number;
+  proses: number;
+  review: number;
+  selesai: number;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, isAuthLoaded, token, setToken } = useAuth();
   const router = useRouter();
-  const [selectedCase, setSelectedCase] = React.useState(null);
   const pathname = usePathname();
-  const [recentCases, setRecentCases] = React.useState([]);
+
+  const [forms, setForms] = React.useState<FormItem[]>([]);
+  const [stats, setStats] = React.useState<Stats | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
-  const itemsPerPage = 7;
-  const [deleteConfirm, setDeleteConfirm] = React.useState(null);
-  
-  // State untuk sorting
-  const [sortConfig, setSortConfig] = React.useState({ key: '', direction: 'ascending' });
+  const [sortConfig, setSortConfig] = React.useState({ key: "created_at", direction: "descending" });
+  const [selectedForm, setSelectedForm] = React.useState<FormItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = React.useState<FormItem | null>(null);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const itemsPerPage = 8;
 
-  const [statusCounts, setStatusCounts] = React.useState({
-    pending: 0,
-    selesai: 0,
-    proses: 0,
-    review: 0,
-  });
-  
-  // Buat fungsi fetchStatusCounts dengan useCallback agar bisa dipanggil ulang
-const fetchStatusCounts = React.useCallback(async () => {
-  if (!token) return;
-  try {
-    const response = await fetch("https://dev.dokasah.web.id/api/dashboard/status-count", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!response.ok) {
-      throw new Error("Gagal mengambil data status");
-    }
-    const data = await response.json();
-    setStatusCounts(data.counts);
-  } catch (error) {
-    console.error("Error:", error);
-  }
-}, [token]);
-  
-
-  // Redirect ke halaman login bila token tidak ada
   useAuthRedirect();
 
-
-React.useEffect(() => {
-  fetchStatusCounts();
-}, [fetchStatusCounts]);
-
-const handleChangeStatus = async (slug, newStatus) => {
-  try {
-    const res = await fetch(`https://dev.dokasah.web.id/api/forms/${slug}/status`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    if (res.ok) {
-      // Refresh data formulir setelah update status
-      fetchForms();
-      // Refresh dashboard status count
-      fetchStatusCounts();
-    } else {
-      console.error('Gagal mengupdate status');
-    }
-  } catch (error) {
-    console.error(error);
-  }
-};
-  
-
-  // Fungsi untuk fetch data formulir
+  // ── Fetch helpers ─────────────────────────────────────────────────────────
   const fetchForms = React.useCallback(async () => {
+    if (!token) return;
     try {
-      const res = await fetch('https://dev.dokasah.web.id/api/dashboard/forms', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(`${API_BASE}/api/forms/list.php`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        // Transformasi data agar sesuai dengan sample dan menambahkan properti updatedAt untuk sorting
-        const transformedData = data.forms.map((item) => ({
-          id: item.id,
-          number: `F-${item.id.toString().padStart(4, '0')}`, // misalnya F-0001
-          client: item.assigned_email,
-          type: item.form_type,
-          status: item.status || 'Not Submitted',
-          deadline: item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A',
-          updatedAt: item.updated_at ? new Date(item.updated_at) : null,
-          slug: item.slug
-        }));
-        setRecentCases(transformedData);
-        setCurrentPage(1); // reset pagination jika data baru didapat
-      } else {
-        console.error('Gagal mengambil data formulir');
+        if (data.success) setForms(data.forms);
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (e) { console.error(e); }
   }, [token]);
 
-  // Auto refresh: fetch data saat mount dan tiap 30 detik
+  const fetchStats = React.useCallback(async () => {
+    if (!token || user?.role !== "admin") return;
+    try {
+      const res = await fetch(`${API_BASE}/api/dashboard/stats.php`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setStats(data.counts);
+      }
+    } catch (e) { console.error(e); }
+  }, [token, user?.role]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([fetchForms(), fetchStats()]);
+    setIsRefreshing(false);
+  };
+
   React.useEffect(() => {
     if (token) {
       fetchForms();
-      const interval = setInterval(fetchForms, 30000); // refresh tiap 30 detik
+      fetchStats();
+      const interval = setInterval(() => { fetchForms(); fetchStats(); }, 30000);
       return () => clearInterval(interval);
     }
-  }, [token, fetchForms]);
+  }, [token, fetchForms, fetchStats]);
 
-  // Refresh data saat navigasi ke dashboard (misalnya berpindah tab di sidebar)
-  React.useEffect(() => {
-    if (token) {
-      fetchForms();
-    }
-  }, [pathname, token, fetchForms]);
-
-  // Mengurutkan data berdasarkan sortConfig menggunakan useMemo
-  const sortedCases = React.useMemo(() => {
-    let sortableItems = [...recentCases];
+  // ── Sorting & Pagination ──────────────────────────────────────────────────
+  const sortedForms = React.useMemo(() => {
+    const sorted = [...forms];
     if (sortConfig.key) {
-      sortableItems.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
-
-        // Tangani nilai null (misalnya pada tanggal)
-        if (aValue === null) return 1;
-        if (bValue === null) return -1;
-
-        if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+      sorted.sort((a, b) => {
+        const av = a[sortConfig.key as keyof FormItem] ?? "";
+        const bv = b[sortConfig.key as keyof FormItem] ?? "";
+        if (av < bv) return sortConfig.direction === "ascending" ? -1 : 1;
+        if (av > bv) return sortConfig.direction === "ascending" ? 1 : -1;
         return 0;
       });
     }
-    return sortableItems;
-  }, [recentCases, sortConfig]);
+    return sorted;
+  }, [forms, sortConfig]);
 
+  const totalPages = Math.ceil(sortedForms.length / itemsPerPage);
+  const paginated = sortedForms.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleSort = (key: string) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "ascending" ? "descending" : "ascending",
+    }));
+    setCurrentPage(1);
+  };
+  const handleLogout = () => { setToken(null); router.push("/login"); };
+
+  const handleChangeStatus = async (slug: string, status: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/forms/status.php`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ slug, status }),
+      });
+      if (res.ok) { fetchForms(); fetchStats(); }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/forms/delete.php?slug=${deleteConfirm.slug}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) { fetchForms(); fetchStats(); setDeleteConfirm(null); }
+    } catch (e) { console.error(e); }
+  };
+
+  const copyLink = (link: string) => {
+    navigator.clipboard.writeText(link);
+  };
+
+  // ── Loading ───────────────────────────────────────────────────────────────
   if (!isAuthLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-400 font-medium">Memuat dashboard...</p>
         </div>
       </div>
     );
   }
 
-  const handleLogout = () => {
-    setToken(null);
-    router.push("/login");
-  };
-
-  // Pagination: hitung data yang akan ditampilkan dari data yang sudah diurutkan
-  const totalPages = Math.ceil(sortedCases.length / itemsPerPage);
-  const paginatedCases = sortedCases.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
-  };
-
-  const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
-  };
-
-  // Fungsi untuk navigasi ke halaman detail form berdasarkan slug
-  const handleViewDetail = (slug) => {
-    router.push(`/form/${slug}`);
-  };
-
-  // Fungsi handleSort untuk mengubah state sortConfig
-  const handleSort = (key) => {
-    let direction = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-    setCurrentPage(1);
-  };
+  const isAdmin = user?.role === "admin";
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 border-r bg-card overflow-y-auto">
-      <div 
-  className="p-4 flex items-center gap-2 border-b cursor-pointer"
-  onClick={() => window.location.href = "https://dokasah.web.id"}
->
-  <span className="font-bold text-lg">Dokasah</span>
-</div>
-
-<nav className="flex-1 p-2 space-y-1">
-  <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-  <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
-  {user?.role === 'admin' && (
-    <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
-  )}
-</nav>
-
-        <div className="p-4 border-t mt-auto">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarImage src={user?.profile_pictures} alt="User" />
-              <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">User menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+      {/* Welcome & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/50 dark:border-slate-800/80 pb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Selamat datang, {user?.name?.split(" ")[0]} 👋
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {isAdmin ? "Admin Panel — Kelola semua formulir klien" : "Client Portal — Formulir Anda"}
+          </p>
         </div>
-      </aside>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-9 px-3 text-slate-500 dark:text-slate-300 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850" onClick={handleRefresh} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            Segarkan
+          </Button>
+          {isAdmin && <CreateFormModal onCreated={() => { fetchForms(); fetchStats(); }} />}
+        </div>
+      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 sm:px-6">
-          {/* Mobile Menu Hamburger */}
-          <div className="lg:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="lg:hidden">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
-                <div className="p-4 flex items-center gap-2 border-b">
-                  <span className="font-bold text-lg">Dokasah</span>
+          {/* Stats cards — admin only */}
+          {isAdmin && stats && (
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+              <StatCard label="Total" value={stats.total} color="blue" icon={<FileText className="w-4 h-4" />} />
+              <StatCard label="Draft" value={stats.draft} color="slate" icon={<Clock className="w-4 h-4" />} />
+              <StatCard label="Submitted" value={stats.submitted} color="indigo" icon={<FileArchive className="w-4 h-4" />} />
+              <StatCard label="Proses" value={stats.proses} color="amber" icon={<LoaderIcon className="w-4 h-4" />} />
+              <StatCard label="Review" value={stats.review} color="purple" icon={<Users className="w-4 h-4" />} />
+              <StatCard label="Selesai" value={stats.selesai} color="green" icon={<CheckCircle2 className="w-4 h-4" />} />
+            </div>
+          )}
+
+          {/* Forms table */}
+          <Card className="shadow-sm border-slate-200 dark:border-slate-800">
+            <CardHeader className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    {isAdmin ? "Semua Formulir" : "Formulir Saya"}
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-0.5">
+                    {forms.length} formulir ditemukan
+                  </CardDescription>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-  <NavItem href="/dashboard" icon={LayoutDashboard} label="Dashboard" active={pathname === "/dashboard"} />
-  <NavItem href="/filemanager" icon={Folder} label="File Manager" active={pathname === "/filemanager"} />
-  {user?.role === 'admin' && (
-    <NavItem href="/blog-admin" icon={NotepadText} label="Artikel Manager" active={pathname === "/blog-admin"} />
-  )}
-</nav>
-
-              </SheetContent>
-            </Sheet>
-          </div>
-
-          {/* Header Content */}
-          <div className="flex items-center justify-end w-full">
-            <div className="flex items-center gap-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.profile_pictures || "/placeholder-user.jpg"} alt="User" />
-                      <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-4 md:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-muted-foreground">Salam Hangat 🙌, {user?.name}</p>
               </div>
-              <div className="flex items-center gap-2">
-                {user?.role === 'admin' && <CreateFormModal />}
-              </div>
-            </div>
+            </CardHeader>
 
-            {/* Overview Cards */}
-            {user?.role === 'admin' && 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Formulir Pending"
-          value={statusCounts.pending}
-          description="Formulir yang belum diisi, wajib follow-up"
-          icon={<FileArchive className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatCard
-          title="Formulir Selesai"
-          value={statusCounts.selesai}
-          description="Formulir yang sudah di-submit, wajib dicek"
-          icon={<FileText className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatCard
-          title="Dalam Proses"
-          value={statusCounts.proses}
-          description="Berkas dalam tahap proses"
-          icon={<LoaderIcon className="h-4 w-4 text-muted-foreground" />}
-        />
-        <StatCard
-          title="Review"
-          value={statusCounts.review}
-          description="Follow-up client, untuk menyelesaikan"
-          icon={<Users className="h-4 w-4 text-muted-foreground" />}
-        />
-              </div>
-            }
-
-            {/* Tabs Section */}
-            <Tabs defaultValue="cases" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="cases">Formulir Terkini</TabsTrigger>
-              </TabsList>
-              <TabsContent value="cases" className="space-y-4">
-                <Card>
-                  <CardHeader className="px-6">
-                    <CardTitle>Formulir terkini</CardTitle>
-                    <CardDescription>Terlampir formulir yang tersedia.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead onClick={() => handleSort('id')} className="cursor-pointer select-none">
-                            Id {sortConfig.key === 'id' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-                          </TableHead>
-                          <TableHead onClick={() => handleSort('client')} className="cursor-pointer select-none">
-                            Email Client {sortConfig.key === 'client' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-                          </TableHead>
-                          <TableHead onClick={() => handleSort('type')} className="hidden md:table-cell cursor-pointer select-none">
-                            Tipe {sortConfig.key === 'type' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-                          </TableHead>
-                          <TableHead onClick={() => handleSort('status')} className="hidden md:table-cell cursor-pointer select-none">
-                            Status {sortConfig.key === 'status' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-                          </TableHead>
-                          <TableHead onClick={() => handleSort('updatedAt')} className="hidden md:table-cell cursor-pointer select-none">
-                            Update terbaru {sortConfig.key === 'updatedAt' && (sortConfig.direction === 'ascending' ? <ChevronUp className="inline ml-1" /> : <ChevronDown className="inline ml-1" />)}
-                          </TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b border-slate-100 dark:border-slate-800">
+                      <SortableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-16" />
+                      {isAdmin && <SortableHead label="Email Client" sortKey="assigned_email" sortConfig={sortConfig} onSort={handleSort} />}
+                      <SortableHead label="Jenis Formulir" sortKey="form_label" sortConfig={sortConfig} onSort={handleSort} />
+                      <SortableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell" />
+                      <SortableHead label="Dibuat" sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell" />
+                      <TableHead className="text-right text-xs font-semibold text-slate-500 pr-6">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginated.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">
+                          <div className="flex flex-col items-center gap-2">
+                            <FileText className="w-8 h-8 text-slate-300" />
+                            Belum ada formulir
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginated.map((form) => (
+                        <TableRow key={form.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <TableCell className="font-mono text-xs text-slate-400 pl-6">#{form.id}</TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-sm">
+                              <span className="text-slate-700 dark:text-slate-200">{form.assigned_email}</span>
+                            </TableCell>
+                          )}
+                          <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                            {form.form_label}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <StatusBadge status={form.status} />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-xs text-slate-500">
+                            {new Date(form.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-700">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-52">
+                                <DropdownMenuItem onClick={() => setSelectedForm(form)}>
+                                  <FileText className="mr-2 h-3.5 w-3.5" />Lihat Detail
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/form/${form.slug}`)}>
+                                  <ExternalLink className="mr-2 h-3.5 w-3.5" />Buka Form
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => copyLink(form.link)}>
+                                  <Copy className="mr-2 h-3.5 w-3.5" />Salin Link
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/filemanager/${form.slug}`)}>
+                                  <Folder className="mr-2 h-3.5 w-3.5" />Dokumen
+                                </DropdownMenuItem>
+                                {isAdmin && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs text-slate-400 font-normal">Ubah Status</DropdownMenuLabel>
+                                    {["draft", "submitted", "proses", "review", "selesai"]
+                                      .filter((s) => s !== form.status?.toLowerCase())
+                                      .map((s) => (
+                                        <DropdownMenuItem key={s} onClick={() => handleChangeStatus(form.slug, s)}>
+                                          <StatusBadge status={s} />
+                                        </DropdownMenuItem>
+                                      ))}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-red-600 focus:text-red-600"
+                                      onClick={() => setDeleteConfirm(form)}
+                                    >
+                                      <Trash2 className="mr-2 h-3.5 w-3.5" />Hapus Formulir
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedCases.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center">tidak ada formulir</TableCell>
-                          </TableRow>
-                        ) : (
-                          paginatedCases.map((caseItem) => (
-                            <TableRow key={caseItem.id}>
-                              <TableCell className="font-medium">{caseItem.number}</TableCell>
-                              <TableCell>{caseItem.client}</TableCell>
-                              <TableCell className="hidden md:table-cell">{caseItem.type}</TableCell>
-                              <TableCell className="hidden md:table-cell">
-                                <Badge variant={getStatusVariant(caseItem.status)}>{caseItem.status}</Badge>
-                              </TableCell>
-                              <TableCell className="hidden md:table-cell">{caseItem.deadline}</TableCell>
-                              <TableCell className="text-right">
-                              <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="ghost" size="icon">
-      <MoreHorizontal className="h-4 w-4" />
-      <span className="sr-only">aksi</span>
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent align="end">
-  {user?.role === 'admin' && (
-    <DropdownMenuItem 
-      className="text-destructive"
-      onClick={() => setDeleteConfirm(caseItem)}
-    >
-      Hapus Formulir
-    </DropdownMenuItem>
-  )}
-  <DropdownMenuItem onClick={() => setSelectedCase(caseItem)}>
-    Lihat Info
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => handleViewDetail(caseItem.slug)}>
-    Lihat Form
-  </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => router.push(`/filemanager/${caseItem.slug}`)}>
-  Tambahkan Dokumen
-</DropdownMenuItem>
-    {/* Opsi status untuk admin */}
-    {user?.role === 'admin' && (
-      <>
-        <DropdownMenuSeparator />
-        {["draft", "submitted", "proses", "review", "selesai"].map((s) => {
-          if (s === caseItem.status.toLowerCase()) return null;
-          return (
-            <DropdownMenuItem key={s} onClick={() => handleChangeStatus(caseItem.slug, s)}>
-              Ganti ke {s.charAt(0).toUpperCase() + s.slice(1)}
-            </DropdownMenuItem>
-          );
-        })}
-      </>
-    )}
-  </DropdownMenuContent>
-</DropdownMenu>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
 
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                  <CardFooter className="flex justify-between border-t p-4">
-                    <Button variant="outline" onClick={handlePrev} disabled={currentPage === 1}>
-                      Previous
-                    </Button>
-                    <Button variant="outline" onClick={handleNext} disabled={currentPage === totalPages || totalPages === 0}>
-                      Next
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </main>
-      </div>
-      {selectedCase && (
-  <Dialog open={!!selectedCase} onOpenChange={() => setSelectedCase(null)}>
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle>Detail Formulir</DialogTitle>
-        <DialogDescription>
-          Informasi lengkap untuk {selectedCase.number}
-        </DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-4 py-4">
-        <div className="grid grid-cols-4 items-center gap-4">
-          <span className="text-sm text-muted-foreground col-span-1">
-            Nomor
-          </span>
-          <span className="col-span-3">{selectedCase.number}</span>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <span className="text-sm text-muted-foreground col-span-1">
-            Client
-          </span>
-          <span className="col-span-3 break-all">{selectedCase.client}</span>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <span className="text-sm text-muted-foreground col-span-1">
-            Tipe
-          </span>
-          <span className="col-span-3">{selectedCase.type}</span>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <span className="text-sm text-muted-foreground col-span-1">
-            Status
-          </span>
-          <div className="col-span-3">
-            <Badge variant={getStatusVariant(selectedCase.status)}>
-              {selectedCase.status}
-            </Badge>
-          </div>
-        </div>
-        <div className="grid grid-cols-4 items-center gap-4">
-          <span className="text-sm text-muted-foreground col-span-1">
-            Terakhir Update
-          </span>
-          <span className="col-span-3">{selectedCase.deadline}</span>
-        </div>
-      </div>
-    </DialogContent>
-  </Dialog>
-)}
+            {totalPages > 1 && (
+              <CardFooter className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-6 py-3">
+                <p className="text-xs text-slate-500">
+                  Halaman {currentPage} dari {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => p - 1)} disabled={currentPage === 1} className="h-7 text-xs">
+                    ← Sebelumnya
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => p + 1)} disabled={currentPage === totalPages} className="h-7 text-xs">
+                    Berikutnya →
+                  </Button>
+                </div>
+              </CardFooter>
+            )}
+          </Card>
 
-{deleteConfirm && (
-  <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-    <DialogContent className="sm:max-w-[425px]">
-      <DialogHeader>
-        <DialogTitle>Konfirmasi Hapus</DialogTitle>
-        <DialogDescription>
-          Apakah Anda yakin ingin menghapus formulir {deleteConfirm.number}?
-        </DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-4 py-4">
-        <p className="text-sm text-destructive">
-          Aksi ini akan menghapus semua data terkait formulir ini secara permanen!
-        </p>
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-          Batal
-        </Button>
-        <Button 
-          variant="destructive"
-          onClick={async () => {
-            try {
-              const response = await fetch(
-                `https://dev.dokasah.web.id/api/forms/${deleteConfirm.slug}`,
-                {
-                  method: 'DELETE',
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
+
+      {/* ── Detail Dialog ────────────────────────────────────────────────────── */}
+      {selectedForm && (
+        <Dialog open={!!selectedForm} onOpenChange={() => setSelectedForm(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Detail Formulir #{selectedForm.id}</DialogTitle>
+              <DialogDescription>{selectedForm.form_label}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2 text-sm">
+              <DetailRow label="Email Client" value={selectedForm.assigned_email} />
+              <DetailRow label="Jenis Formulir" value={selectedForm.form_label} />
+              <DetailRow label="Status" value={<StatusBadge status={selectedForm.status} />} />
+              <DetailRow label="Catatan" value={selectedForm.note || "–"} />
+              <DetailRow
+                label="Link Form"
+                value={
+                  <div className="flex items-center gap-2">
+                    <code className="text-xs bg-slate-100 px-2 py-0.5 rounded break-all">{selectedForm.link}</code>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyLink(selectedForm.link)}>
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
                 }
-              );
-              
-              if (response.ok) {
-                fetchForms();
-                fetchStatusCounts();
-                setDeleteConfirm(null);
-              } else {
-                console.error('Gagal menghapus formulir');
-              }
-            } catch (error) {
-              console.error('Error:', error);
-            }
-          }}
-        >
-          Hapus Permanen
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-)}
+              />
+              <DetailRow
+                label="Dibuat"
+                value={new Date(selectedForm.created_at).toLocaleString("id-ID")}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedForm(null)}>Tutup</Button>
+              <Button onClick={() => { copyLink(selectedForm.link); }}>
+                <Copy className="h-4 w-4 mr-1" />Salin Link
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
+      {/* ── Delete Dialog ────────────────────────────────────────────────────── */}
+      {deleteConfirm && (
+        <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Hapus Formulir?</DialogTitle>
+              <DialogDescription>
+                Hapus formulir #{deleteConfirm.id} untuk <b>{deleteConfirm.assigned_email}</b>?
+                Semua data terkait akan hilang permanen.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Batal</Button>
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4 mr-1" />Hapus Permanen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
 
-function NavItem({ href, icon: Icon, label, badge, active = false }) {
+// ─── Sub-components ───────────────────────────────────────────────────────────
+function NavItem({ href, icon: Icon, label, active = false }: {
+  href: string; icon: React.ElementType; label: string; active?: boolean;
+}) {
   return (
     <Link href={href}>
-      <Button variant={active ? "secondary" : "ghost"} className="w-full justify-start">
-        <Icon className="mr-2 h-4 w-4" />
+      <Button
+        variant="ghost"
+        className={`w-full justify-start gap-2.5 h-9 text-sm font-medium transition-all ${
+          active
+            ? "bg-blue-50 text-blue-700 hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-300"
+            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
         {label}
-        {badge && <Badge className="ml-auto" variant="secondary">{badge}</Badge>}
       </Button>
     </Link>
   );
 }
 
-function StatCard({ title, value, description, icon }) {
+function StatCard({ label, value, color, icon }: {
+  label: string; value: number; color: string; icon: React.ReactNode;
+}) {
+  const colorMap: Record<string, string> = {
+    blue:   "bg-blue-50 text-blue-600 border-blue-100",
+    slate:  "bg-slate-50 text-slate-600 border-slate-200",
+    indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    amber:  "bg-amber-50 text-amber-600 border-amber-100",
+    purple: "bg-purple-50 text-purple-600 border-purple-100",
+    green:  "bg-green-50 text-green-600 border-green-100",
+  };
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+    <div className={`rounded-xl border p-4 ${colorMap[color]}`}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium opacity-80">{label}</span>
         {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
+      </div>
+      <p className="text-2xl font-bold">{value}</p>
+    </div>
   );
 }
 
-function getStatusVariant(status) {
-  switch (status.toLowerCase()) {
-    case "draft":
-      return "draft";
-    case "submitted":
-      return "submitted";
-    case "proses":
-      return "proses";
-    case "review":
-      return "review";
-    case "selesai":
-      return "selesai";
-    default:
-      return "outline";
-  }
+function SortableHead({ label, sortKey, sortConfig, onSort, className = "" }: {
+  label: string; sortKey: string; sortConfig: { key: string; direction: string };
+  onSort: (k: string) => void; className?: string;
+}) {
+  return (
+    <TableHead
+      onClick={() => onSort(sortKey)}
+      className={`cursor-pointer select-none text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors pl-6 ${className}`}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortConfig.key === sortKey ? (
+          sortConfig.direction === "ascending" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+        ) : null}
+      </div>
+    </TableHead>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-4">
+      <span className="text-slate-500 w-32 shrink-0 text-xs mt-0.5">{label}</span>
+      <div className="flex-1 text-slate-700 dark:text-slate-200">{value}</div>
+    </div>
+  );
 }

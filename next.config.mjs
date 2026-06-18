@@ -21,6 +21,15 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  // ─── Proxy PHP backend → eliminasi CORS sepenuhnya ───────────────────────
+  async rewrites() {
+    return [
+      {
+        source: '/php-api/:path*',
+        destination: 'https://ccgnimex.my.id/v2/android/dokasah/:path*',
+      },
+    ]
+  },
 }
 
 mergeConfig(nextConfig, userConfig)

@@ -3,185 +3,177 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithPopup, auth, provider } from "../public/firebase.config";
-import { Button } from "@/components/ui/button";
-import { useSearchParams } from "next/navigation"; // Import useSearchParams
 import { useAuth } from "@/components/AuthContext";
-import { MessageCircle } from "lucide-react";
+import { Eye, EyeOff, LogIn, Shield } from "lucide-react";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { setToken } = useAuth(); // Gunakan setToken dari context
+  const { setToken, token, isAuthLoaded } = useAuth();
 
+  // Redirect jika sudah login
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (token) {
-          const response = await fetch("https://dev.dokasah.web.id/api/protected/api/protected", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          
-          if (response.ok) {
-            router.push("/dashboard");
-          } else {
-            localStorage.removeItem("token");
-          }
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    
-    checkAuth();
-  }, [router]);
+    if (isAuthLoaded && token) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthLoaded, token, router]);
 
-  const handleGoogleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
     setIsLoading(true);
+
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-  
-      // Ambil data gambar profil dari akun Google
-      const profilePicture = user.photoURL || null;
-  
-      const response = await fetch("https://dev.dokasah.web.id/api/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: user.displayName,
-          email: user.email,
-          profile_picture: profilePicture, // Kirim data gambar profil
-        }),
-      });
-  
-      if (response.ok) {
-        const data = await response.json();
-        setToken(data.token); // Gunakan setToken dari context
+      const response = await fetch(
+        "/api/php/api/auth/login.php",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setToken(data.token);
         const searchParams = new URLSearchParams(window.location.search);
         const redirectUrl = searchParams.get("redirect") || "/dashboard";
         router.push(redirectUrl);
       } else {
-        setError("Gagal menyimpan data pengguna.");
+        setError(data.message || "Login gagal. Periksa email dan password.");
       }
-    } catch (err) {
-      setError("Login gagal. Silakan coba lagi.");
+    } catch {
+      setError("Tidak dapat terhubung ke server. Coba beberapa saat lagi.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-<header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
-  <div className="container flex h-16 items-center justify-between">
-    {/* Logo dan Teks "Dokasah" */}
-    <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-      <div className="size-8 rounded-full bg-gradient-to-br from-primary to-primary-foreground flex items-center justify-center text-white">
-        D
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl" />
       </div>
-      Dokasah
-    </Link>
 
-    {/* Navigasi */}
-    <nav className="hidden md:flex gap-6">
-      <Link href="/" className="text-sm font-medium hover:text-primary">
-        Beranda
-      </Link>
-      <Link href="/layanan" className="text-sm font-medium hover:text-primary">
-        Layanan
-      </Link>
-      <Link href="/tentang-kami" className="text-sm font-medium hover:text-primary">
-        Tentang Kami
-      </Link>
-    </nav>
-
-    {/* Tombol Login dan WhatsApp */}
-    <div className="flex items-center gap-2">
-      <Link href="/login">
-        <Button variant="outline">Login</Button>
-      </Link>
-      <Button
-        onClick={() =>
-          window.open(
-            "https://wa.me/6287767518217?text=Saya%20ingin%20konsultasi%20tentang%20layanan%20Dokasah%2C%20bisa%20dibantu%3F",
-          )
-        }
-        className="group"
-      >
-        <MessageCircle className="h-4 w-4" /> {/* Ikon Telepon */}
-      </Button>
-    </div>
-  </div>
-</header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="w-full max-w-md space-y-8 px-4 py-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="text-center">
-            <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Masuk ke Dashboard Anda
-            </h2>
+      <div className="relative w-full max-w-md">
+        {/* Card */}
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-block">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 mb-4 shadow-lg shadow-blue-500/30">
+                <Shield className="w-8 h-8 text-white" />
+              </div>
+            </Link>
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              Masuk ke Dokasah
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              Dashboard Admin & Client Portal
+            </p>
           </div>
-          {error && <p className="text-red-500 text-center">{error}</p>}
-          <div className="mt-8 space-y-6">
-            <Button
-              onClick={handleGoogleLogin}
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Error */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-sm text-red-400 text-center animate-in fade-in">
+                {error}
+              </div>
+            )}
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Email
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@dokasah.web.id"
+                required
+                autoComplete="email"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full px-4 py-3 pr-12 rounded-xl bg-white/5 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              id="login-submit"
+              type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold transition-all duration-200 shadow-lg shadow-blue-500/20 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-blue-500/30 hover:-translate-y-0.5 active:translate-y-0"
             >
               {isLoading ? (
-                "Memproses..."
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Memproses...
+                </>
               ) : (
                 <>
-                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
-                    <path fill="none" d="M1 1h22v22H1z" />
-                  </svg>
-                  Masuk dengan Google
+                  <LogIn className="w-4 h-4" />
+                  Masuk
                 </>
               )}
-            </Button>
-          </div>
-        </div>
-      </main>
+            </button>
+          </form>
 
-      {/* Footer */}
-      <footer className="border-t bg-muted/40 backdrop-blur-sm">
-        <div className="container flex flex-col gap-6 py-8 md:py-12">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Legalitas. Hak Cipta Dilindungi.
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-slate-500">
+              Belum punya akun? Hubungi admin Dokasah.
             </p>
-            <div className="flex gap-4">
-              <Link href="#" className="text-xs text-muted-foreground hover:text-foreground">
-                Syarat & Ketentuan
-              </Link>
-              <Link href="#" className="text-xs text-muted-foreground hover:text-foreground">
-                Kebijakan Privasi
-              </Link>
-            </div>
           </div>
         </div>
-      </footer>
+
+        {/* Bottom link */}
+        <div className="text-center mt-6">
+          <Link href="/" className="text-slate-400 hover:text-white text-sm transition-colors">
+            ← Kembali ke Beranda
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

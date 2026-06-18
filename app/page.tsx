@@ -1,14 +1,375 @@
 "use client"; // This makes the component a Client Component
 
+import * as React from "react"
 import Image from "next/image"
 import Head from 'next/head';
 import { sendGTMEvent } from '@next/third-parties/google'
 import Link from "next/link"
-import { Star, CheckCircle, ArrowRight, BarChart2, FolderOpen, FileText, Phone, MessageCircle } from "lucide-react"
+import { Star, CheckCircle, ArrowRight, BarChart2, FolderOpen, FileText, Phone, MessageCircle, Clock, Download, RefreshCw, Check, Building } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+
+function DashboardMockup() {
+  const [activeTab, setActiveTab] = React.useState<"progress" | "documents">("progress");
+  
+  const currentStep = 2; // Step 3 (SK Kemenkumham) is active
+  
+  // Steps description for Legalitas PT
+  const steps = [
+    { name: "Pengisian Formulir", desc: "Data & dokumen persyaratan", status: "completed" },
+    { name: "Review Dokumen", desc: "Verifikasi oleh tim legal", status: "completed" },
+    { name: "SK Kemenkumham", desc: "Proses pengesahan notaris & negara", status: "active" },
+    { name: "NPWP Perusahaan", desc: "Pendaftaran NPWP Badan Usaha", status: "pending" },
+    { name: "Penerbitan NIB", desc: "Nomor Induk Berusaha via OSS", status: "pending" }
+  ];
+
+  // Documents list
+  const documents = [
+    { name: "Akta_Pendirian_PT_Maju.pdf", type: "Akta Pendirian", size: "2.4 MB", status: "selesai" },
+    { name: "SK_Menkumham_Maju.pdf", type: "SK Pengesahan", size: "1.2 MB", status: "selesai" },
+    { name: "NPWP_PT_Maju.pdf", type: "NPWP Badan", size: "850 KB", status: "proses" },
+    { name: "NIB_PT_Maju.pdf", type: "Izin Usaha NIB", size: "---", status: "pending" }
+  ];
+
+  const getStepStatus = (index: number) => {
+    if (index < currentStep) return "completed";
+    if (index === currentStep) return "active";
+    return "pending";
+  };
+
+  const activeProgress = ((currentStep) / 4) * 100;
+
+  return (
+    <div className="w-full bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col font-sans">
+      {/* Mockup Header */}
+      <div className="bg-slate-950/80 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {/* OS-like circles */}
+          <div className="flex gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-red-500/80 block"></span>
+            <span className="w-3 h-3 rounded-full bg-yellow-500/80 block"></span>
+            <span className="w-3 h-3 rounded-full bg-green-500/80 block"></span>
+          </div>
+          <span className="text-xs text-slate-400 font-medium ml-2 select-none">Client Portal - Dokasah</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px] py-0.5 px-2">
+            Live Update
+          </Badge>
+        </div>
+      </div>
+
+      {/* Main Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-12 min-h-[380px] bg-slate-950">
+        {/* Sidebar Info */}
+        <div className="md:col-span-4 border-b md:border-b-0 md:border-r border-slate-800 p-4 flex flex-col justify-start gap-4 bg-slate-900/50">
+          <div className="space-y-3">
+            <div>
+              <span className="text-[10px] text-primary uppercase font-bold tracking-wider">Perusahaan Anda</span>
+              <h4 className="font-bold text-slate-200 mt-0.5 text-sm md:text-base">PT Maju Bersama Nusantara</h4>
+              <p className="text-xs text-slate-400">Tipe: PT Umum (Mikro/Kecil)</p>
+            </div>
+
+            <div className="h-px bg-slate-800" />
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-slate-950/50 rounded-lg border border-slate-800/60">
+                <span className="text-slate-400 block text-[10px]">KBLI Terpilih</span>
+                <span className="font-semibold text-slate-200">62019</span>
+              </div>
+              <div className="p-2 bg-slate-950/50 rounded-lg border border-slate-800/60">
+                <span className="text-slate-400 block text-[10px]">Notaris</span>
+                <span className="font-semibold text-slate-200">Dra. Anita</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="md:col-span-8 p-4 flex flex-col justify-between">
+          {/* Tab Headers */}
+          <div>
+            <div className="flex gap-2 border-b border-slate-800 pb-3 mb-4">
+              <button
+                onClick={() => setActiveTab("progress")}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  activeTab === "progress"
+                    ? "bg-primary text-white font-semibold"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                }`}
+              >
+                Progress Tracker
+              </button>
+              <button
+                onClick={() => setActiveTab("documents")}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  activeTab === "documents"
+                    ? "bg-primary text-white font-semibold"
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                }`}
+              >
+                Dokumen Unduhan
+              </button>
+            </div>
+
+            {/* Progress Tracker Tab */}
+            {activeTab === "progress" && (
+              <div className="space-y-4">
+                {/* Progress Summary */}
+                <div>
+                  <div className="flex justify-between items-center text-xs mb-1.5 text-slate-300">
+                    <span className="font-medium">Total Kemajuan Legalitas</span>
+                    <span className="font-bold text-primary">{Math.round(activeProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
+                      style={{ width: `${activeProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Vertical Steps */}
+                <div className="space-y-3">
+                  {steps.map((step, idx) => {
+                    const status = getStepStatus(idx);
+                    return (
+                      <div key={idx} className="flex gap-3 items-start group">
+                        <div className="flex flex-col items-center">
+                          {status === "completed" && (
+                            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          )}
+                          {status === "active" && (
+                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white ring-4 ring-primary/20 animate-pulse">
+                              <Clock className="w-3 h-3" />
+                            </div>
+                          )}
+                          {status === "pending" && (
+                            <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500">
+                              <span className="text-[10px] font-bold">{idx + 1}</span>
+                            </div>
+                          )}
+                          {idx < steps.length - 1 && (
+                            <div className={`w-0.5 h-5 mt-1 ${status === "completed" ? "bg-emerald-500/50" : "bg-slate-800"}`} />
+                          )}
+                        </div>
+                        <div className="flex-1 -mt-0.5">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-semibold ${status === "completed" ? "text-slate-300" : status === "active" ? "text-primary font-bold animate-pulse" : "text-slate-500"}`}>
+                              {step.name}
+                            </span>
+                            {status === "active" && (
+                              <Badge className="bg-primary/20 text-primary border-primary/30 text-[9px] py-0 px-1.5 font-normal">
+                                Sedang Diproses
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">{step.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Documents Tab */}
+            {activeTab === "documents" && (
+              <div className="space-y-3">
+                <div className="border border-slate-800 rounded-lg overflow-hidden bg-slate-900/30">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400">
+                        <th className="p-2.5 font-semibold">Nama Berkas</th>
+                        <th className="p-2.5 font-semibold text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {documents.map((doc, idx) => {
+                        let calculatedStatus = "pending";
+                        let sizeLabel = "---";
+                        if (idx === 0) {
+                          calculatedStatus = currentStep >= 1 ? "selesai" : "proses";
+                          sizeLabel = currentStep >= 1 ? "2.4 MB" : "---";
+                        } else if (idx === 1) {
+                          calculatedStatus = currentStep >= 2 ? "selesai" : currentStep === 1 ? "proses" : "pending";
+                          sizeLabel = currentStep >= 2 ? "1.2 MB" : "---";
+                        } else if (idx === 2) {
+                          calculatedStatus = currentStep >= 3 ? "selesai" : currentStep === 2 ? "proses" : "pending";
+                          sizeLabel = currentStep >= 3 ? "850 KB" : "---";
+                        } else if (idx === 3) {
+                          calculatedStatus = currentStep >= 4 ? "selesai" : currentStep === 3 ? "proses" : "pending";
+                          sizeLabel = currentStep >= 4 ? "980 KB" : "---";
+                        }
+
+                        return (
+                          <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-900/25 transition-colors">
+                            <td className="p-2.5">
+                              <div className="flex items-center gap-2">
+                                <FileText className={`w-4 h-4 ${calculatedStatus === "selesai" ? "text-emerald-400" : "text-slate-500"}`} />
+                                <div>
+                                  <span className="font-medium block text-slate-200 truncate max-w-[150px] md:max-w-[180px]">
+                                    {doc.name}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 block">{doc.type} • {sizeLabel}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-2.5 text-right">
+                              {calculatedStatus === "selesai" && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                  Selesai
+                                </span>
+                              )}
+                              {calculatedStatus === "proses" && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 animate-pulse">
+                                  Diproses
+                                </span>
+                              )}
+                              {calculatedStatus === "pending" && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-800/40 px-1.5 py-0.5 rounded border border-slate-700/30">
+                                  Menunggu
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="text-[10px] text-slate-400 flex items-center gap-1 bg-slate-900/40 p-2 rounded-lg border border-slate-800/50 mt-2">
+            <CheckCircle className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span>Dokumen resmi terdaftar di database Kemenkumham & OSS Indonesia.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DocumentVaultMockup() {
+  const [activeFolder, setActiveFolder] = React.useState<"legal" | "tax" | "permits">("legal");
+
+  const folders = [
+    { id: "legal", name: "Akte & Kemenkumham", count: 2 },
+    { id: "tax", name: "NPWP & Perpajakan", count: 2 },
+    { id: "permits", name: "Izin Usaha & NIB", count: 1 }
+  ];
+
+  const initialFiles = {
+    legal: [
+      { name: "Salinan_Akta_Notaris_Signed.pdf", date: "16 Jun 2026", size: "2.4 MB" },
+      { name: "SK_Menteri_Hukum_HAM.pdf", date: "17 Jun 2026", size: "1.1 MB" }
+    ],
+    tax: [
+      { name: "NPWP_Badan_Usaha_Active.pdf", date: "18 Jun 2026", size: "640 KB" },
+      { name: "Surat_Keterangan_Terdaftar_SKT.pdf", date: "18 Jun 2026", size: "520 KB" }
+    ],
+    permits: [
+      { name: "NIB_Nomor_Induk_Berusaha.pdf", date: "Belum Rilis", size: "---" }
+    ]
+  };
+
+  const getFiles = () => {
+    return initialFiles[activeFolder];
+  };
+
+  return (
+    <div className="w-full bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col font-sans">
+      {/* Mockup Header */}
+      <div className="bg-slate-950/80 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1.5">
+            <span className="w-3 h-3 rounded-full bg-red-500/80 block"></span>
+            <span className="w-3 h-3 rounded-full bg-yellow-500/80 block"></span>
+            <span className="w-3 h-3 rounded-full bg-green-500/80 block"></span>
+          </div>
+          <span className="text-xs text-slate-400 font-medium ml-2 select-none">Brankas Dokumen Digital</span>
+        </div>
+        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] py-0.5 px-2">
+          Enkripsi SSL
+        </Badge>
+      </div>
+
+      {/* Main Body */}
+      <div className="grid grid-cols-1 md:grid-cols-12 min-h-[340px] bg-slate-950">
+        {/* Folders List Sidebar */}
+        <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-800 p-4 flex flex-col justify-between gap-3 bg-slate-900/40">
+          <div className="space-y-3">
+            <span className="text-[10px] text-primary uppercase font-bold tracking-wider mb-1">Kategori Berkas</span>
+            
+            {folders.map((folder) => (
+              <button
+                key={folder.id}
+                onClick={() => setActiveFolder(folder.id as any)}
+                className={`flex w-full items-center justify-between p-2.5 rounded-lg border text-left transition-all ${
+                  activeFolder === folder.id
+                    ? "bg-primary/15 border-primary/50 text-white font-semibold"
+                    : "bg-slate-900/30 border-slate-800/80 text-slate-400 hover:bg-slate-900/85 hover:text-slate-200"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <FolderOpen className={`w-4 h-4 ${activeFolder === folder.id ? "text-primary" : "text-slate-500"}`} />
+                  <span className="text-xs">{folder.name}</span>
+                </div>
+                <Badge className={`text-[9px] py-0 px-1.5 ${activeFolder === folder.id ? "bg-primary text-white" : "bg-slate-800 text-slate-400"}`}>
+                  {folder.count}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Files View */}
+        <div className="md:col-span-7 p-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Isi Folder</span>
+            
+            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+              {getFiles().map((file, idx) => (
+                <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-900/30 border border-slate-850 hover:bg-slate-900/50 transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText className="w-4.5 h-4.5 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-xs text-slate-200 font-medium block truncate max-w-[170px] md:max-w-[190px]">
+                        {file.name}
+                      </span>
+                      <span className="text-[9px] text-slate-500 block">{file.date} • {file.size}</span>
+                    </div>
+                  </div>
+                  {file.size !== "---" ? (
+                    <span className="text-[9px] text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      Tersimpan
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-amber-400 font-semibold bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 animate-pulse">
+                      Proses
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-[10px] text-slate-400 bg-slate-900/30 p-2.5 rounded-lg border border-slate-800/40 flex items-start gap-1.5 mt-4">
+            <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+            <span>Semua berkas legalitas aman disimpan di Dokasah Cloud Storage & dapat diakses selamanya oleh Anda.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
@@ -142,15 +503,9 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Right Column: Image */}
-        <div className="w-full lg:w-1/2">
-          <Image
-            src="https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/1.png"
-            width={600}
-            height={400}
-            alt="Jasa Pembuatan PT"
-            className="w-full h-auto rounded-xl shadow-lg"
-          />
+        {/* Right Column: Dashboard Mockup */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center">
+          <DashboardMockup />
         </div>
       </div>
     </div>
@@ -396,14 +751,8 @@ export default function LandingPage() {
                   ))}
                 </ul>
               </div>
-              <div className="relative mx-auto aspect-video overflow-hidden rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 p-1 shadow-xl dark:from-blue-950 dark:to-indigo-950 sm:w-full">
-                <Image
-                  src="https://ccgnimex.s3.us-east-005.backblazeb2.com/dokasah/Biru+Dan+Kuning+Modern+Jasa+Pemasanagan+Internet+Instagram+Post.jpg"
-                  width={600}
-                  height={400}
-                  alt="Tim Legalitas"
-                  className="h-full w-full rounded-lg object-cover"
-                />
+              <div className="w-full flex items-center justify-center">
+                <DocumentVaultMockup />
               </div>
             </div>
           </div>

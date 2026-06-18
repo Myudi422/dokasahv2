@@ -1,0 +1,36 @@
+# Apache .htaccess for backend-php
+# Path: /v2/android/dokasah/.htaccess
+
+Options -Indexes
+ServerSignature Off
+
+# Default document
+DirectoryIndex index.php
+
+# Block direct access to config/helper files (not the api folder)
+<FilesMatch "^(database|cors|jwt|backblaze|auth)\.php$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# CORS Headers for all responses
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header always set Access-Control-Max-Age "3600"
+</IfModule>
+
+# PHP upload limits (for file upload endpoint)
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_execution_time 60
+    php_value memory_limit 128M
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_execution_time 60
+    php_value memory_limit 128M
+</IfModule>
