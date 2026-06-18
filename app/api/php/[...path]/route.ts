@@ -27,9 +27,14 @@ async function handler(
   }
 
   // Read body for non-GET methods
-  let body: string | undefined;
+  let body: any = undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
-    body = await req.text();
+    const ct = req.headers.get("content-type") || "";
+    if (ct.includes("multipart/form-data")) {
+      body = await req.arrayBuffer();
+    } else {
+      body = await req.text();
+    }
   }
 
   console.log(`[PHP Proxy] ${req.method} ${phpUrl}`);
