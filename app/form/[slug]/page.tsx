@@ -1052,6 +1052,9 @@ function FormField({
           {field.label}
           {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
         </label>
+        {field.description && (
+          <p className="text-xs text-slate-450 dark:text-slate-500 leading-normal">{field.description}</p>
+        )}
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -1076,6 +1079,9 @@ function FormField({
           {field.label}
           {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
         </label>
+        {field.description && (
+          <p className="text-xs text-slate-450 dark:text-slate-500 leading-normal">{field.description}</p>
+        )}
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -1096,6 +1102,9 @@ function FormField({
         {field.label}
         {field.required && <span className="text-red-500 ml-1 font-bold">*</span>}
       </label>
+      {field.description && (
+        <p className="text-xs text-slate-450 dark:text-slate-500 leading-normal">{field.description}</p>
+      )}
       <div className={field.prefix ? "flex items-center border rounded-xl overflow-hidden hover:border-slate-350 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all " + (error ? "border-red-400 focus-within:ring-red-500/20 focus-within:border-red-500" : "border-slate-200 dark:border-slate-800") : ""}>
         {field.prefix && (
           <span className="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 text-sm text-slate-500 dark:text-slate-400 font-semibold select-none">
