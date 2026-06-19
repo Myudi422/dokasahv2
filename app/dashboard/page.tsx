@@ -402,6 +402,63 @@ export default function DashboardPage() {
 
       currentY += 15;
 
+      // --- Payment Method Section ---
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(30, 58, 138);
+      doc.text("METODE PEMBAYARAN", margin, currentY);
+
+      // Section separator line
+      currentY += 2.5;
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(margin, currentY, width - margin, currentY);
+      currentY += 4.5;
+
+      // Generate & add QR Code image
+      const QRCode = await import("qrcode");
+      const qrCodeUrl = "https://app.midtrans.com/payment-links/payment-dokasah-FQw4D0TX";
+      const qrDataUrl = await QRCode.toDataURL(qrCodeUrl, { margin: 1, scale: 4 });
+      doc.addImage(qrDataUrl, "PNG", margin, currentY, 28, 28);
+
+      // Text details next to QR Code
+      const detailX = margin + 33;
+      let textY = currentY + 3;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("1. Scan QR Code atau klik link di bawah:", detailX, textY);
+
+      textY += 4;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(37, 99, 235); // Blue link color
+      doc.textWithLink("Bayar via Midtrans (Klik di sini)", detailX, textY, { url: qrCodeUrl });
+
+      textY += 5.5;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text("2. Atau Transfer Manual:", detailX, textY);
+
+      textY += 4;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+      doc.text("Bank BCA: 7402325413 a/n MUHAMAD RIZKI WAHYUDI", detailX, textY);
+
+      textY += 4;
+      doc.text("Bank Jago: 501558209000 a/n MUHAMAD RIZKI WAHYUDI", detailX, textY);
+
+      textY += 5;
+      doc.setFont("helvetica", "bolditalic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(220, 38, 38); // Red color for security warning
+      doc.text("PENTING: Selain dari rekening di atas, itu bukan dari pihak Dokasah.", detailX, textY);
+
+      currentY += 32;
+
       // Notes section
       if (invoiceForm.notes) {
         doc.setFont("helvetica", "bold");
@@ -595,7 +652,7 @@ export default function DashboardPage() {
               doc.setFont("helvetica", "bold");
               doc.setFontSize(9);
               doc.setTextColor(37, 99, 235); // Blue link
-              doc.text("Download Disini", margin + 48, currentY, { link: { url: rawVal } });
+              doc.textWithLink("Download Disini", margin + 48, currentY, { url: rawVal });
             } else {
               doc.setFont("helvetica", "normal");
               doc.setFontSize(9);
