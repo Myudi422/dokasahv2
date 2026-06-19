@@ -21,12 +21,16 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  // ─── Proxy PHP backend → eliminasi CORS sepenuhnya ───────────────────────
+  // ─── Proxy PHP & B2 assets → eliminasi CORS sepenuhnya ───────────────────
   async rewrites() {
     return [
       {
         source: '/php-api/:path*',
         destination: 'https://dev.legalpilar.id/v2/android/dokasah/:path*',
+      },
+      {
+        source: '/b2-assets/:path*',
+        destination: 'https://ccgnimex.s3.us-east-005.backblazeb2.com/:path*',
       },
     ]
   },

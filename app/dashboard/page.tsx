@@ -83,6 +83,7 @@ export default function DashboardPage() {
   const [selectedForm, setSelectedForm] = React.useState<FormItem | null>(null);
   const [deleteConfirm, setDeleteConfirm] = React.useState<FormItem | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isPdfLoading, setIsPdfLoading] = React.useState<string | null>(null);
   const itemsPerPage = 8;
 
   useAuthRedirect();
@@ -180,6 +181,192 @@ export default function DashboardPage() {
 
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
+  };
+
+  const handlePreviewPdf = async (formItem: FormItem) => {
+    setIsPdfLoading(formItem.slug);
+    try {
+      // 1. Fetch form details
+      const detailRes = await fetch(`${API_BASE}/api/forms/detail.php?slug=${formItem.slug}`);
+      if (!detailRes.ok) throw new Error("Gagal mengambil detail formulir");
+      const detail = await detailRes.json();
+      if (!detail.success) throw new Error(detail.message || "Gagal mengambil detail");
+
+      const formObj = detail.form;
+      const submissionObj = detail.submission;
+      const responses = submissionObj?.data || {};
+
+      // 2. Fetch watermark image through proxy and convert to base64
+      let wmBase64 = "";
+      try {
+        const wmUrl = "/b2-assets/dokasah/wm.jpg";
+        wmBase64 = await getBase64ImageFromUrl(wmUrl);
+      } catch (err) {
+        console.error("Gagal memuat watermark cover:", err);
+      }
+
+      // 3. Initialize jsPDF dynamically
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+
+      const width = 210;
+      const height = 297;
+      const margin = 20;
+      const contentWidth = width - (margin * 2);
+
+      let currentY = 64;
+
+      const addPageWithWatermark = () => {
+        doc.addPage();
+        if (wmBase64) {
+          doc.addImage(wmBase64, "JPEG", 0, 0, width, height);
+        }
+        currentY = 64;
+      };
+
+      // Draw first page watermark
+      if (wmBase64) {
+        doc.addImage(wmBase64, "JPEG", 0, 0, width, height);
+      }
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(30, 58, 138);
+      doc.text(formObj.form_label.toUpperCase(), margin, currentY);
+      
+      currentY += 6;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`ID Formulir: #${formObj.id} | Slug: ${formObj.slug}`, margin, currentY);
+
+      currentY += 10;
+
+      // Divider line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(margin, currentY, width - margin, currentY);
+
+      currentY += 8;
+
+      // Metadata Info Box
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(241, 245, 249);
+      doc.roundedRect(margin, currentY, contentWidth, 24, 3, 3, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text("WhatsApp Klien:", margin + 5, currentY + 7);
+      doc.text("Status Formulir:", margin + 5, currentY + 15);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(formObj.assigned_wa || "-", margin + 35, currentY + 7);
+      
+      const statusText = (submissionObj?.status || "draft").toUpperCase();
+      doc.text(statusText, margin + 35, currentY + 15);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text("Dibuat Tanggal:", margin + 95, currentY + 7);
+      doc.text("Pembaruan Terakhir:", margin + 95, currentY + 15);
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 23, 42);
+      const createdDate = new Date(formObj.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+      doc.text(createdDate, margin + 125, currentY + 7);
+
+      const updatedDate = submissionObj?.updated_at 
+        ? new Date(submissionObj.updated_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) 
+        : "-";
+      doc.text(updatedDate, margin + 125, currentY + 15);
+
+      currentY += 32;
+
+      // Render sections & fields
+      const sections = formObj.form_structure?.sections || [];
+      
+      if (sections.length === 0) {
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(10);
+        doc.setTextColor(148, 163, 184);
+        doc.text("Belum ada data struktur formulir.", margin, currentY);
+      } else {
+        for (const section of sections) {
+          if (currentY > 240) {
+            addPageWithWatermark();
+          }
+
+          // Section Title Banner
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin, currentY, contentWidth, 8, "F");
+          doc.setDrawColor(226, 232, 240);
+          doc.line(margin, currentY, margin, currentY + 8);
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(30, 58, 138);
+          doc.text(section.title || "Section", margin + 4, currentY + 5.5);
+
+          currentY += 14;
+
+          const fields = section.fields || [];
+          for (const field of fields) {
+            const rawVal = responses[field.name];
+            let displayVal = "–";
+
+            if (field.type === "file") {
+              displayVal = rawVal ? `TERUNGGAH: ${rawVal}` : "BELUM DIUNGGAH";
+            } else {
+              displayVal = rawVal || "–";
+            }
+
+            const labelLines = doc.splitTextToSize(field.label || "", 45);
+            const valueLines = doc.splitTextToSize(displayVal, contentWidth - 50);
+
+            const rowHeight = Math.max(labelLines.length * 4, valueLines.length * 4) + 4;
+
+            if (currentY + rowHeight > 258) {
+              addPageWithWatermark();
+            }
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.setTextColor(71, 85, 105);
+            doc.text(labelLines, margin, currentY);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(15, 23, 42);
+            doc.text(valueLines, margin + 48, currentY);
+
+            doc.setDrawColor(241, 245, 249);
+            doc.setLineWidth(0.2);
+            doc.line(margin, currentY + rowHeight - 2, width - margin, currentY + rowHeight - 2);
+
+            currentY += rowHeight;
+          }
+
+          currentY += 6;
+        }
+      }
+
+      // Open PDF in a new tab instead of downloading automatically
+      const pdfUrl = doc.output("bloburl");
+      window.open(pdfUrl, "_blank");
+    } catch (error) {
+      console.error("Gagal membuat preview PDF:", error);
+      alert("Gagal membuat PDF. Coba lagi.");
+    } finally {
+      setIsPdfLoading(null);
+    }
   };
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -297,6 +484,14 @@ export default function DashboardPage() {
                                 <DropdownMenuItem onClick={() => setSelectedForm(form)}>
                                   <FileText className="mr-2 h-3.5 w-3.5" />Lihat Detail
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handlePreviewPdf(form)} disabled={isPdfLoading === form.slug}>
+                                  {isPdfLoading === form.slug ? (
+                                    <LoaderIcon className="mr-2 h-3.5 w-3.5 animate-spin text-blue-500" />
+                                  ) : (
+                                    <FileText className="mr-2 h-3.5 w-3.5 text-blue-500" />
+                                  )}
+                                  <span className="font-semibold text-blue-600 dark:text-blue-400">Preview PDF</span>
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => router.push(`/form/${form.slug}`)}>
                                   <ExternalLink className="mr-2 h-3.5 w-3.5" />Buka Form
                                 </DropdownMenuItem>
@@ -384,8 +579,16 @@ export default function DashboardPage() {
                 value={new Date(selectedForm.created_at).toLocaleString("id-ID")}
               />
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setSelectedForm(null)}>Tutup</Button>
+              <Button variant="secondary" onClick={() => handlePreviewPdf(selectedForm)} disabled={isPdfLoading === selectedForm.slug}>
+                {isPdfLoading === selectedForm.slug ? (
+                  <LoaderIcon className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4 mr-1.5" />
+                )}
+                Preview PDF
+              </Button>
               <Button onClick={() => { copyLink(selectedForm.link); }}>
                 <Copy className="h-4 w-4 mr-1" />Salin Link
               </Button>
@@ -488,3 +691,14 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
     </div>
   );
 }
+
+const getBase64ImageFromUrl = async (url: string): Promise<string> => {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+};
