@@ -66,18 +66,18 @@ $adminId = (int)($decoded['id'] ?? 0);
 
 // ── Parse request body ────────────────────────────────────────────────────────
 $body     = json_decode(file_get_contents('php://input'), true) ?? [];
-$email    = trim($body['email']    ?? '');
+$wa       = trim($body['wa'] ?? $body['email'] ?? '');
 $formType = trim($body['formType'] ?? '');
 $note     = trim($body['note']     ?? '');
 
-if (!$email || !$formType) {
+if (!$wa || !$formType) {
     http_response_code(400);
-    echo json_encode(['success'=>false,'message'=>'Email dan jenis formulir wajib diisi.']);
+    echo json_encode(['success'=>false,'message'=>'Nomor WhatsApp dan jenis formulir wajib diisi.']);
     exit();
 }
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+if (!preg_match('/^[0-9+ -]{9,20}$/', $wa)) {
     http_response_code(400);
-    echo json_encode(['success'=>false,'message'=>'Format email tidak valid.']);
+    echo json_encode(['success'=>false,'message'=>'Format nomor WhatsApp tidak valid. Gunakan format angka saja (contoh: 08123456789).']);
     exit();
 }
 
@@ -117,10 +117,10 @@ try {
 
     // Insert form configuration
     $stmt = $pdo->prepare(
-        'INSERT INTO form_configurations (form_type, assigned_email, slug, note, created_by, created_at, updated_at)
+        'INSERT INTO form_configurations (form_type, assigned_wa, slug, note, created_by, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, NOW(), NOW())'
     );
-    $stmt->execute([$formType, $email, $slug, $note, $adminId]);
+    $stmt->execute([$formType, $wa, $slug, $note, $adminId]);
     $formId = $pdo->lastInsertId();
 
     $link = "https://dokasah.web.id/form/$slug";

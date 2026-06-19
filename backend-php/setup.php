@@ -83,17 +83,35 @@ runSQL($pdo, "CREATE TABLE form_configurations", "
 CREATE TABLE IF NOT EXISTS `form_configurations` (
   `id`             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `form_type`      VARCHAR(100) NOT NULL,
-  `assigned_email` VARCHAR(255) NOT NULL,
+  `assigned_wa`    VARCHAR(255) NOT NULL,
   `slug`           VARCHAR(64)  NOT NULL UNIQUE,
   `note`           TEXT         NULL,
   `created_by`     INT UNSIGNED NULL,
   `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_slug           (`slug`),
-  INDEX idx_assigned_email (`assigned_email`),
-  INDEX idx_form_type      (`form_type`)
+  INDEX idx_slug      (`slug`),
+  INDEX idx_assigned_wa (`assigned_wa`),
+  INDEX idx_form_type (`form_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ");
+
+// Rename assigned_email to assigned_wa if it exists (migration)
+try {
+    $cols = array_column($pdo->query("SHOW COLUMNS FROM form_configurations")->fetchAll(), 'Field');
+    if (in_array('assigned_email', $cols)) {
+        $pdo->exec("ALTER TABLE `form_configurations` CHANGE COLUMN `assigned_email` `assigned_wa` VARCHAR(255) NOT NULL COMMENT 'Client WA this form is for'");
+        try {
+            $pdo->exec("ALTER TABLE `form_configurations` RENAME INDEX `idx_assigned_email` TO `idx_assigned_wa`");
+        } catch (Exception $eIndex) {
+            // Ignore index rename error on older MySQL versions
+        }
+        $logs[] = "✅ ALTER TABLE form_configurations — renamed assigned_email to assigned_wa";
+    } else {
+        $logs[] = "ℹ️  form_configurations.assigned_wa already exists/configured";
+    }
+} catch (Exception $e) {
+    $errors[] = "❌ ALTER form_configurations: " . $e->getMessage();
+}
 
 // ── 4. form_submissions ───────────────────────────────────────────────────────
 runSQL($pdo, "CREATE TABLE form_submissions", "

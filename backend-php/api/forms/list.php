@@ -25,7 +25,7 @@ try {
     $pdo = getDB();
     if ($decoded['role'] === 'admin') {
         $stmt = $pdo->prepare("
-            SELECT fc.id, fc.form_type, fc.assigned_email, fc.slug, fc.note, fc.created_at,
+            SELECT fc.id, fc.form_type, fc.assigned_wa, fc.slug, fc.note, fc.created_at,
                    COALESCE(fs.label, fc.form_type) AS form_label,
                    fsub.status, fsub.updated_at AS last_updated
             FROM form_configurations fc
@@ -36,13 +36,13 @@ try {
         $stmt->execute();
     } else {
         $stmt = $pdo->prepare("
-            SELECT fc.id, fc.form_type, fc.assigned_email, fc.slug, fc.note, fc.created_at,
+            SELECT fc.id, fc.form_type, fc.assigned_wa, fc.slug, fc.note, fc.created_at,
                    COALESCE(fs.label, fc.form_type) AS form_label,
                    fsub.status, fsub.updated_at AS last_updated
             FROM form_configurations fc
             LEFT JOIN form_structures fs ON fc.form_type = fs.form_type
             LEFT JOIN form_submissions fsub ON fc.id = fsub.form_config_id
-            WHERE fc.assigned_email = ?
+            WHERE fc.assigned_wa = ?
             ORDER BY fc.created_at DESC
         ");
         $stmt->execute([$decoded['email']]);
@@ -53,7 +53,8 @@ try {
             'id'             => (int)$f['id'],
             'form_type'      => $f['form_type'],
             'form_label'     => $f['form_label'],
-            'assigned_email' => $f['assigned_email'],
+            'assigned_wa'    => $f['assigned_wa'],
+            'assigned_email' => $f['assigned_wa'], // fallback compatibility
             'slug'           => $f['slug'],
             'note'           => $f['note'],
             'status'         => $f['status'] ?? 'draft',

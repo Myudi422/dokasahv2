@@ -49,15 +49,15 @@ CREATE TABLE IF NOT EXISTS `form_structures` (
 CREATE TABLE IF NOT EXISTS `form_configurations` (
   `id`             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `form_type`      VARCHAR(100) NOT NULL,
-  `assigned_email` VARCHAR(255) NOT NULL COMMENT 'Client email this form is for',
+  `assigned_wa`    VARCHAR(255) NOT NULL COMMENT 'Client WhatsApp number this form is for',
   `slug`           VARCHAR(64)  NOT NULL UNIQUE COMMENT 'URL-friendly unique identifier',
   `note`           TEXT         NULL COMMENT 'Admin notes',
   `created_by`     INT UNSIGNED NULL COMMENT 'Admin user ID who created this',
   `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_slug           (`slug`),
-  INDEX idx_assigned_email (`assigned_email`),
-  INDEX idx_form_type      (`form_type`),
+  INDEX idx_slug      (`slug`),
+  INDEX idx_assigned_wa (`assigned_wa`),
+  INDEX idx_form_type (`form_type`),
   FOREIGN KEY (`form_type`) REFERENCES `form_structures` (`form_type`) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

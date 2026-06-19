@@ -16,7 +16,7 @@ if (!$slug) { http_response_code(400); echo json_encode(['success'=>false,'messa
 try {
     $pdo  = getDB();
     $stmt = $pdo->prepare("
-        SELECT fc.id, fc.form_type, fc.assigned_email, fc.slug, fc.note, fc.created_at,
+        SELECT fc.id, fc.form_type, fc.assigned_wa, fc.slug, fc.note, fc.created_at,
                fs.label AS form_label, fs.form_structure, fs.description AS form_description
         FROM form_configurations fc
         JOIN form_structures fs ON fc.form_type = fs.form_type
@@ -38,7 +38,8 @@ try {
             'form_type'        => $form['form_type'],
             'form_label'       => $form['form_label'],
             'form_description' => $form['form_description'],
-            'assigned_email'   => $form['assigned_email'],
+            'assigned_wa'      => $form['assigned_wa'],
+            'assigned_email'   => $form['assigned_wa'], // fallback compatibility
             'slug'             => $form['slug'],
             'note'             => $form['note'],
             'form_structure'   => json_decode($form['form_structure'], true),

@@ -52,7 +52,7 @@ interface FormItem {
   id: number;
   form_type: string;
   form_label: string;
-  assigned_email: string;
+  assigned_wa: string;
   slug: string;
   note: string;
   status: string;
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-b border-slate-100 dark:border-slate-800">
                       <SortableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-16" />
-                      {isAdmin && <SortableHead label="Email Client" sortKey="assigned_email" sortConfig={sortConfig} onSort={handleSort} />}
+                      {isAdmin && <SortableHead label="No. WhatsApp Klien" sortKey="assigned_wa" sortConfig={sortConfig} onSort={handleSort} />}
                       <SortableHead label="Jenis Formulir" sortKey="form_label" sortConfig={sortConfig} onSort={handleSort} />
                       <SortableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell" />
                       <SortableHead label="Dibuat" sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell" />
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                           <TableCell className="font-mono text-xs text-slate-400 pl-6">#{form.id}</TableCell>
                           {isAdmin && (
                             <TableCell className="text-sm">
-                              <span className="text-slate-700 dark:text-slate-200">{form.assigned_email}</span>
+                              <span className="text-slate-700 dark:text-slate-200">{form.assigned_wa}</span>
                             </TableCell>
                           )}
                           <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-200">
@@ -364,7 +364,7 @@ export default function DashboardPage() {
               <DialogDescription>{selectedForm.form_label}</DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2 text-sm">
-              <DetailRow label="Email Client" value={selectedForm.assigned_email} />
+              <DetailRow label="No. WhatsApp Klien" value={selectedForm.assigned_wa} />
               <DetailRow label="Jenis Formulir" value={selectedForm.form_label} />
               <DetailRow label="Status" value={<StatusBadge status={selectedForm.status} />} />
               <DetailRow label="Catatan" value={selectedForm.note || "–"} />
@@ -401,7 +401,7 @@ export default function DashboardPage() {
             <DialogHeader>
               <DialogTitle>Hapus Formulir?</DialogTitle>
               <DialogDescription>
-                Hapus formulir #{deleteConfirm.id} untuk <b>{deleteConfirm.assigned_email}</b>?
+                Hapus formulir #{deleteConfirm.id} untuk <b>{deleteConfirm.assigned_wa}</b>?
                 Semua data terkait akan hilang permanen.
               </DialogDescription>
             </DialogHeader>

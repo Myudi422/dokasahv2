@@ -27,7 +27,7 @@ interface Props {
 
 export default function CreateFormModal({ onCreated }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [email, setEmail] = useState("");
+  const [wa, setWa] = useState("");
   const [formType, setFormType] = useState("");
   const [note, setNote] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +74,7 @@ export default function CreateFormModal({ onCreated }: Props) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email, formType, note }),
+        body: JSON.stringify({ wa, formType, note }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -103,13 +103,18 @@ export default function CreateFormModal({ onCreated }: Props) {
     const msg = encodeURIComponent(
       `Halo 👋, berikut link formulir *${result.form_type?.label ?? ""}* untuk Anda:\n\n${result.link}\n\nSilakan isi formulir tersebut sesuai data yang diminta. Jika ada pertanyaan, jangan ragu menghubungi kami.`
     );
-    window.open(`https://wa.me/?text=${msg}`, "_blank");
+    // Format WA number to international format (e.g. replace leading 0 with 62)
+    let formattedWa = wa.replace(/[^0-9]/g, "");
+    if (formattedWa.startsWith("0")) {
+      formattedWa = "62" + formattedWa.slice(1);
+    }
+    window.open(`https://wa.me/${formattedWa}?text=${msg}`, "_blank");
   };
 
   const handleClose = () => {
     setIsOpen(false);
     setTimeout(() => {
-      setEmail(""); setFormType(""); setNote(""); setResult(null); setError(""); setCopied(false);
+      setWa(""); setFormType(""); setNote(""); setResult(null); setError(""); setCopied(false);
     }, 300);
   };
 
@@ -138,17 +143,17 @@ export default function CreateFormModal({ onCreated }: Props) {
               </div>
             )}
 
-            {/* Email */}
+            {/* WhatsApp Number */}
             <div>
-              <label htmlFor="cf-email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email Klien
+              <label htmlFor="cf-wa" className="block text-sm font-medium text-slate-700 mb-1.5">
+                Nomor WhatsApp Klien
               </label>
               <input
-                id="cf-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="klien@email.com"
+                id="cf-wa"
+                type="tel"
+                value={wa}
+                onChange={(e) => setWa(e.target.value)}
+                placeholder="Contoh: 08123456789"
                 required
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
               />
@@ -224,7 +229,7 @@ export default function CreateFormModal({ onCreated }: Props) {
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || !formType || !email}
+                disabled={isLoading || !formType || !wa}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
               >
                 {isLoading ? (
@@ -245,7 +250,7 @@ export default function CreateFormModal({ onCreated }: Props) {
               </div>
               <p className="font-semibold text-slate-800">Formulir Berhasil Dibuat!</p>
               <p className="text-sm text-slate-500 mt-1">
-                {result.form_type?.label} untuk <b>{email}</b>
+                {result.form_type?.label} untuk <b>{wa}</b>
               </p>
             </div>
 

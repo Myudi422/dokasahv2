@@ -44,7 +44,7 @@ interface FormData {
   form_type: string;
   form_label: string;
   form_description: string;
-  assigned_email: string;
+  assigned_wa: string;
   slug: string;
   note: string;
   form_structure: { sections: FormSection[] };
