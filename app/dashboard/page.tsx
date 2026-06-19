@@ -86,6 +86,15 @@ export default function DashboardPage() {
   const [isPdfLoading, setIsPdfLoading] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dateFilter, setDateFilter] = React.useState<"all" | "today">("all");
+  const [invoiceModalOpen, setInvoiceModalOpen] = React.useState(false);
+  const [invoiceForm, setInvoiceForm] = React.useState({
+    number: "",
+    description: "",
+    nominal: "",
+    notes: "Pembayaran telah diterima dan divalidasi. Terima kasih.",
+    status: "LUNAS",
+  });
+  const [invoiceTargetForm, setInvoiceTargetForm] = React.useState<FormItem | null>(null);
   const itemsPerPage = 8;
 
   useAuthRedirect();
@@ -214,6 +223,212 @@ export default function DashboardPage() {
 
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
+  };
+
+  const openInvoiceModal = (form: FormItem) => {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    setInvoiceTargetForm(form);
+    setInvoiceForm({
+      number: `INV/${dateStr}/${form.id}`,
+      description: `Biaya Pengisian & Administrasi - ${form.form_label}`,
+      nominal: "150000",
+      notes: "Pembayaran telah diterima dan divalidasi. Terima kasih.",
+      status: "LUNAS",
+    });
+    setInvoiceModalOpen(true);
+  };
+
+  const handleGenerateInvoicePdf = async () => {
+    if (!invoiceTargetForm) return;
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const width = doc.internal.pageSize.getWidth();
+      const height = doc.internal.pageSize.getHeight();
+
+      let wmBase64 = "";
+      try {
+        wmBase64 = await getBase64ImageFromUrl("/b2-assets/dokasah/wm.jpg");
+      } catch (err) {
+        console.error("Gagal memuat watermark:", err);
+      }
+
+      if (wmBase64) {
+        doc.addImage(wmBase64, "JPEG", 0, 0, width, height);
+      }
+
+      const margin = 20;
+      const contentWidth = width - (margin * 2);
+      let currentY = 64;
+
+      // Invoice Document Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(30, 58, 138);
+      doc.text("INVOICE", margin, currentY);
+
+      // Status Badge paid/lunas/dp/belum bayar/batal
+      let badgeText = invoiceForm.status;
+      let badgeBg = [220, 252, 231]; // default light green
+      let badgeTextClr = [21, 128, 61]; // default dark green
+      let badgeW = 25;
+
+      if (invoiceForm.status === "DP") {
+        badgeBg = [254, 243, 199]; // Amber bg
+        badgeTextClr = [180, 83, 9]; // Amber text
+        badgeText = "DP / DEPOSIT";
+        badgeW = 32;
+      } else if (invoiceForm.status === "BELUM BAYAR") {
+        badgeBg = [254, 226, 226]; // Red bg
+        badgeTextClr = [185, 28, 28]; // Red text
+        badgeText = "BELUM BAYAR";
+        badgeW = 32;
+      } else if (invoiceForm.status === "BATAL") {
+        badgeBg = [241, 245, 249]; // Gray bg
+        badgeTextClr = [71, 85, 105]; // Gray text
+        badgeText = "BATAL";
+        badgeW = 20;
+      }
+
+      doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
+      doc.roundedRect(width - margin - badgeW, currentY - 6, badgeW, 8, 2, 2, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(badgeTextClr[0], badgeTextClr[1], badgeTextClr[2]);
+
+      const textWidth = doc.getTextWidth(badgeText);
+      const textX = width - margin - badgeW + (badgeW - textWidth) / 2;
+      doc.text(badgeText, textX, currentY - 0.5);
+
+      currentY += 12;
+
+      // Draw horizontal separator
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(margin, currentY, width - margin, currentY);
+
+      currentY += 8;
+
+      // Metadata Info
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(71, 85, 105);
+      doc.text("No. Invoice:", margin, currentY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      doc.text(invoiceForm.number, margin + 22, currentY);
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105);
+      doc.text("Tanggal:", margin, currentY + 6);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      doc.text(
+        new Date().toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        margin + 22,
+        currentY + 6
+      );
+
+      // Ditujukan Kepada
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105);
+      doc.text("Ditujukan Kepada:", margin + 95, currentY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      doc.text(invoiceTargetForm.assigned_wa, margin + 95, currentY + 6);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Formulir: ${invoiceTargetForm.form_label}`, margin + 95, currentY + 11);
+
+      currentY += 22;
+
+      // Table Header for Invoice Item
+      doc.setFillColor(30, 58, 138);
+      doc.rect(margin, currentY, contentWidth, 8, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      doc.text("DESKRIPSI LAYANAN / PRODUK", margin + 4, currentY + 5.5);
+      doc.text("TOTAL", width - margin - 35, currentY + 5.5);
+
+      currentY += 12;
+
+      // Table Row Item
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(15, 23, 42);
+      const descLines = doc.splitTextToSize(invoiceForm.description, contentWidth - 45);
+      doc.text(descLines, margin + 4, currentY);
+
+      // Format price
+      const priceVal = parseFloat(invoiceForm.nominal) || 0;
+      const formattedPrice = new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+      }).format(priceVal);
+
+      doc.setFont("helvetica", "bold");
+      doc.text(formattedPrice, width - margin - 35, currentY);
+
+      const rowHeight = Math.max(descLines.length * 4.5, 8);
+      currentY += rowHeight;
+
+      // Draw subtotal separator line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(margin, currentY, width - margin, currentY);
+
+      currentY += 6;
+
+      // Subtotal & Total
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105);
+      doc.text("Total Pembayaran:", width - margin - 75, currentY);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 138);
+      doc.text(formattedPrice, width - margin - 35, currentY);
+
+      currentY += 15;
+
+      // Notes section
+      if (invoiceForm.notes) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(71, 85, 105);
+        doc.text("Catatan:", margin, currentY);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(100, 116, 139);
+        const notesLines = doc.splitTextToSize(invoiceForm.notes, contentWidth - 10);
+        doc.text(notesLines, margin, currentY + 5);
+      }
+
+      // Handle PDF Output (New Tab / Direct Download on Mobile)
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        doc.save(`Invoice_${invoiceForm.number.replace(/\//g, "_")}.pdf`);
+      } else {
+        const pdfUrl = doc.output("bloburl");
+        window.open(pdfUrl, "_blank");
+      }
+
+      // Close modal
+      setInvoiceModalOpen(false);
+    } catch (err) {
+      console.error("Gagal membuat PDF invoice:", err);
+      alert("Gagal membuat PDF Invoice. Silakan coba lagi.");
+    }
   };
 
   const handlePreviewPdf = async (formItem: FormItem) => {
@@ -624,6 +839,10 @@ export default function DashboardPage() {
                                 )}
                                 <span className="font-semibold text-blue-600 dark:text-blue-400">Preview PDF</span>
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openInvoiceModal(form)}>
+                                <FileText className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Buat Invoice</span>
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => router.push(`/form/${form.slug}`)}>
                                 <ExternalLink className="mr-2 h-3.5 w-3.5" />Buka Form
                               </DropdownMenuItem>
@@ -684,44 +903,120 @@ export default function DashboardPage() {
       {/* ── Detail Dialog ────────────────────────────────────────────────────── */}
       {selectedForm && (
         <Dialog open={!!selectedForm} onOpenChange={() => setSelectedForm(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Detail Formulir #{selectedForm.id}</DialogTitle>
-              <DialogDescription>{selectedForm.form_label}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-2 text-sm">
-              <DetailRow label="No. WhatsApp Klien" value={selectedForm.assigned_wa} />
-              <DetailRow label="Jenis Formulir" value={selectedForm.form_label} />
-              <DetailRow label="Status" value={<StatusBadge status={selectedForm.status} />} />
-              <DetailRow label="Catatan" value={selectedForm.note || "–"} />
-              <DetailRow
-                label="Link Form"
-                value={
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs bg-slate-100 px-2 py-0.5 rounded break-all">{selectedForm.link}</code>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => copyLink(selectedForm.link)}>
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                }
-              />
-              <DetailRow
-                label="Dibuat"
-                value={new Date(selectedForm.created_at).toLocaleString("id-ID")}
-              />
+          <DialogContent className="sm:max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6">
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-100/50 dark:border-blue-900/30">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                  Detail Formulir #{selectedForm.id}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                  {selectedForm.form_label}
+                </DialogDescription>
+              </div>
             </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setSelectedForm(null)}>Tutup</Button>
-              <Button variant="secondary" onClick={() => handlePreviewPdf(selectedForm)} disabled={isPdfLoading === selectedForm.slug}>
+
+            <div className="grid grid-cols-2 gap-4 py-4 border-b border-slate-100 dark:border-slate-800 text-xs sm:text-sm">
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  No. WhatsApp Klien
+                </span>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedForm.assigned_wa}</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Status Formulir
+                </span>
+                <div className="pt-0.5">
+                  <StatusBadge status={selectedForm.status} />
+                </div>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Jenis Formulir
+                </span>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedForm.form_label}</p>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Catatan Admin
+                </span>
+                <p className="text-slate-655 dark:text-slate-350 italic bg-slate-50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100 dark:border-slate-900 leading-relaxed">
+                  {selectedForm.note || "Tidak ada catatan."}
+                </p>
+              </div>
+              <div className="space-y-1 col-span-2">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Tautan / Link Formulir
+                </span>
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 p-2 rounded-xl border border-slate-100 dark:border-slate-900">
+                  <code className="text-xs text-blue-600 dark:text-blue-400 font-mono break-all flex-1">{selectedForm.link}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-450 hover:text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => copyLink(selectedForm.link)}>
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Tanggal Dibuat
+                </span>
+                <p className="text-slate-700 dark:text-slate-300 font-medium">
+                  {new Date(selectedForm.created_at).toLocaleString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  })}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">
+                  Terakhir Diperbarui
+                </span>
+                <p className="text-slate-700 dark:text-slate-300 font-medium">
+                  {selectedForm.last_updated
+                    ? new Date(selectedForm.last_updated).toLocaleString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })
+                    : "Belum pernah diperbarui"}
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-wrap items-center justify-end gap-2 pt-4">
+              <Button variant="outline" className="rounded-xl text-xs h-9" onClick={() => setSelectedForm(null)}>
+                Tutup
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl border-emerald-600 text-emerald-600 dark:border-emerald-500 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-xs h-9"
+                onClick={() => {
+                  setSelectedForm(null);
+                  openInvoiceModal(selectedForm);
+                }}
+              >
+                <FileText className="h-3.5 w-3.5 mr-1.5" />
+                Buat Invoice
+              </Button>
+              <Button
+                variant="secondary"
+                className="rounded-xl text-xs h-9"
+                onClick={() => handlePreviewPdf(selectedForm)}
+                disabled={isPdfLoading === selectedForm.slug}
+              >
                 {isPdfLoading === selectedForm.slug ? (
-                  <LoaderIcon className="h-4 w-4 mr-1.5 animate-spin" />
+                  <LoaderIcon className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                 ) : (
-                  <FileText className="h-4 w-4 mr-1.5" />
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
                 )}
                 Preview PDF
-              </Button>
-              <Button onClick={() => { copyLink(selectedForm.link); }}>
-                <Copy className="h-4 w-4 mr-1" />Salin Link
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -743,6 +1038,122 @@ export default function DashboardPage() {
               <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Batal</Button>
               <Button variant="destructive" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-1" />Hapus Permanen
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── Invoice Dialog ────────────────────────────────────────────────────── */}
+      {invoiceModalOpen && invoiceTargetForm && (
+        <Dialog open={invoiceModalOpen} onOpenChange={setInvoiceModalOpen}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white">
+                Buat Invoice Pembayaran
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
+                Lengkapi data invoice untuk formulir #{invoiceTargetForm.id} ({invoiceTargetForm.form_label})
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3">
+              {/* Nomor Invoice */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Nomor Invoice
+                </label>
+                <input
+                  type="text"
+                  value={invoiceForm.number}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, number: e.target.value })}
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all dark:text-slate-100"
+                />
+              </div>
+
+              {/* Deskripsi Invoice */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Deskripsi Invoice / Item
+                </label>
+                <textarea
+                  value={invoiceForm.description}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, description: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all dark:text-slate-100"
+                />
+              </div>
+
+              {/* Nominal Pembayaran */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Nominal (Rp)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-medium">Rp</span>
+                  <input
+                    type="number"
+                    value={invoiceForm.nominal}
+                    onChange={(e) => setInvoiceForm({ ...invoiceForm, nominal: e.target.value })}
+                    className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all dark:text-slate-100"
+                    placeholder="Contoh: 150000"
+                  />
+                </div>
+              </div>
+
+              {/* Status Pembayaran */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Status Invoice
+                </label>
+                <select
+                  value={invoiceForm.status}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    let defaultNote = invoiceForm.notes;
+                    if (newStatus === "LUNAS") {
+                      defaultNote = "Pembayaran telah diterima dan divalidasi. Terima kasih.";
+                    } else if (newStatus === "DP") {
+                      defaultNote = "Pembayaran uang muka (DP) telah diterima. Silakan lunasi sisa pembayaran.";
+                    } else if (newStatus === "BELUM BAYAR") {
+                      defaultNote = "Tagihan belum dibayar. Silakan lakukan pembayaran agar dapat segera diproses.";
+                    } else if (newStatus === "BATAL") {
+                      defaultNote = "Invoice ini telah dibatalkan.";
+                    }
+                    setInvoiceForm({ ...invoiceForm, status: newStatus, notes: defaultNote });
+                  }}
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all dark:text-slate-100 font-medium"
+                >
+                  <option value="LUNAS">LUNAS</option>
+                  <option value="DP">DP (DEPOSIT)</option>
+                  <option value="BELUM BAYAR">BELUM BAYAR</option>
+                  <option value="BATAL">BATAL</option>
+                </select>
+              </div>
+
+              {/* Catatan / Keterangan */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Catatan
+                </label>
+                <textarea
+                  value={invoiceForm.notes}
+                  onChange={(e) => setInvoiceForm({ ...invoiceForm, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all dark:text-slate-100"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button variant="outline" onClick={() => setInvoiceModalOpen(false)}>
+                Batal
+              </Button>
+              <Button 
+                onClick={handleGenerateInvoicePdf}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl"
+              >
+                Cetak & Generate Invoice
               </Button>
             </DialogFooter>
           </DialogContent>
