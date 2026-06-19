@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Folder, LogOut, Menu, MoreHorizontal,
   FileArchive, LoaderIcon, Users, ChevronUp, ChevronDown, Plus,
   CheckCircle2, Clock, AlertCircle, TrendingUp, Copy, ExternalLink,
-  NotepadText, Trash2, RefreshCw,
+  NotepadText, Trash2, RefreshCw, Calendar, Filter, Search,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +84,8 @@ export default function DashboardPage() {
   const [deleteConfirm, setDeleteConfirm] = React.useState<FormItem | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isPdfLoading, setIsPdfLoading] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [dateFilter, setDateFilter] = React.useState<"all" | "today">("all");
   const itemsPerPage = 8;
 
   useAuthRedirect();
@@ -131,8 +133,39 @@ export default function DashboardPage() {
   }, [token, fetchForms, fetchStats]);
 
   // ── Sorting & Pagination ──────────────────────────────────────────────────
+  const filteredForms = React.useMemo(() => {
+    let result = [...forms];
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (form) =>
+          form.assigned_wa?.toLowerCase().includes(q) ||
+          form.form_label?.toLowerCase().includes(q) ||
+          form.slug?.toLowerCase().includes(q) ||
+          form.id?.toString().includes(q)
+      );
+    }
+
+    // Date filter
+    if (dateFilter === "today") {
+      const today = new Date();
+      result = result.filter((form) => {
+        const d = new Date(form.created_at);
+        return (
+          d.getDate() === today.getDate() &&
+          d.getMonth() === today.getMonth() &&
+          d.getFullYear() === today.getFullYear()
+        );
+      });
+    }
+
+    return result;
+  }, [forms, searchQuery, dateFilter]);
+
   const sortedForms = React.useMemo(() => {
-    const sorted = [...forms];
+    const sorted = [...filteredForms];
     if (sortConfig.key) {
       sorted.sort((a, b) => {
         const av = a[sortConfig.key as keyof FormItem] ?? "";
@@ -143,7 +176,7 @@ export default function DashboardPage() {
       });
     }
     return sorted;
-  }, [forms, sortConfig]);
+  }, [filteredForms, sortConfig]);
 
   const totalPages = Math.ceil(sortedForms.length / itemsPerPage);
   const paginated = sortedForms.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -320,10 +353,11 @@ export default function DashboardPage() {
           const fields = section.fields || [];
           for (const field of fields) {
             const rawVal = responses[field.name];
+            const isUploadedFile = field.type === "file" && rawVal;
             let displayVal = "–";
 
             if (field.type === "file") {
-              displayVal = rawVal ? `TERUNGGAH: ${rawVal}` : "BELUM DIUNGGAH";
+              displayVal = rawVal ? "Download Disini" : "BELUM DIUNGGAH";
             } else {
               displayVal = rawVal || "–";
             }
@@ -342,14 +376,17 @@ export default function DashboardPage() {
             doc.setTextColor(71, 85, 105);
             doc.text(labelLines, margin, currentY);
 
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(9);
-            doc.setTextColor(15, 23, 42);
-            doc.text(valueLines, margin + 48, currentY);
-
-            doc.setDrawColor(241, 245, 249);
-            doc.setLineWidth(0.2);
-            doc.line(margin, currentY + rowHeight - 2, width - margin, currentY + rowHeight - 2);
+            if (isUploadedFile) {
+              doc.setFont("helvetica", "bold");
+              doc.setFontSize(9);
+              doc.setTextColor(37, 99, 235); // Blue link
+              doc.text("Download Disini", margin + 48, currentY, { link: { url: rawVal } });
+            } else {
+              doc.setFont("helvetica", "normal");
+              doc.setFontSize(9);
+              doc.setTextColor(15, 23, 42);
+              doc.text(valueLines, margin + 48, currentY);
+            }
 
             currentY += rowHeight;
           }
@@ -358,9 +395,14 @@ export default function DashboardPage() {
         }
       }
 
-      // Open PDF in a new tab instead of downloading automatically
-      const pdfUrl = doc.output("bloburl");
-      window.open(pdfUrl, "_blank");
+      // On mobile, download directly, on desktop open in new tab
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      if (isMobile) {
+        doc.save(`Formulir_${formItem.slug}.pdf`);
+      } else {
+        const pdfUrl = doc.output("bloburl");
+        window.open(pdfUrl, "_blank");
+      }
     } catch (error) {
       console.error("Gagal membuat preview PDF:", error);
       alert("Gagal membuat PDF. Coba lagi.");
@@ -419,117 +461,206 @@ export default function DashboardPage() {
 
           {/* Forms table */}
           <Card className="shadow-sm border-slate-200 dark:border-slate-800">
-            <CardHeader className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
+            <CardHeader className="px-6 py-5 border-b border-slate-100 dark:border-slate-850">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-base font-semibold">
                     {isAdmin ? "Semua Formulir" : "Formulir Saya"}
                   </CardTitle>
                   <CardDescription className="text-xs mt-0.5">
-                    {forms.length} formulir ditemukan
+                    Menampilkan {filteredForms.length} dari {forms.length} formulir
                   </CardDescription>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Search bar */}
+                  <div className="relative w-full sm:w-60">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari nomor WA, jenis form..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-850 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all dark:text-slate-100 placeholder-slate-400"
+                    />
+                  </div>
+
+                  {/* Filter Date Button Group */}
+                  <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-900">
+                    <button
+                      onClick={() => {
+                        setDateFilter("all");
+                        setCurrentPage(1);
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        dateFilter === "all"
+                          ? "bg-white dark:bg-slate-850 text-slate-900 dark:text-white shadow-sm"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900"
+                      }`}
+                    >
+                      Semua
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDateFilter("today");
+                        setCurrentPage(1);
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1 ${
+                        dateFilter === "today"
+                          ? "bg-white dark:bg-slate-855 text-slate-900 dark:text-white shadow-sm"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900"
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      Hari Ini
+                    </button>
+                  </div>
+
+                  {/* Sort selector */}
+                  <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-800 px-3 py-2 bg-slate-50 dark:bg-slate-900 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300"
+                    onClick={() => {
+                      handleSort("created_at");
+                    }}
+                  >
+                    <Filter className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Dibuat: {sortConfig.direction === "descending" ? "Terbaru" : "Terlama"}</span>
+                    {sortConfig.direction === "ascending" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </div>
                 </div>
               </div>
             </CardHeader>
 
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent border-b border-slate-100 dark:border-slate-800">
-                      <SortableHead label="ID" sortKey="id" sortConfig={sortConfig} onSort={handleSort} className="w-16" />
-                      {isAdmin && <SortableHead label="No. WhatsApp Klien" sortKey="assigned_wa" sortConfig={sortConfig} onSort={handleSort} />}
-                      <SortableHead label="Jenis Formulir" sortKey="form_label" sortConfig={sortConfig} onSort={handleSort} />
-                      <SortableHead label="Status" sortKey="status" sortConfig={sortConfig} onSort={handleSort} className="hidden md:table-cell" />
-                      <SortableHead label="Dibuat" sortKey="created_at" sortConfig={sortConfig} onSort={handleSort} className="hidden lg:table-cell" />
-                      <TableHead className="text-right text-xs font-semibold text-slate-500 pr-6">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginated.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-12 text-slate-400 text-sm">
-                          <div className="flex flex-col items-center gap-2">
-                            <FileText className="w-8 h-8 text-slate-300" />
-                            Belum ada formulir
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginated.map((form) => (
-                        <TableRow key={form.id} className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <TableCell className="font-mono text-xs text-slate-400 pl-6">#{form.id}</TableCell>
-                          {isAdmin && (
-                            <TableCell className="text-sm">
-                              <span className="text-slate-700 dark:text-slate-200">{form.assigned_wa}</span>
-                            </TableCell>
-                          )}
-                          <TableCell className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                            {form.form_label}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
+            <CardContent className="p-6">
+              {paginated.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 text-sm">
+                  <div className="flex flex-col items-center gap-3">
+                    <FileText className="w-10 h-10 text-slate-300 dark:text-slate-700" />
+                    <span className="font-medium">Belum ada formulir ditemukan</span>
+                    <p className="text-xs text-slate-500 max-w-xs">
+                      Tidak ada formulir yang sesuai dengan pencarian atau filter tanggal Anda.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paginated.map((form) => (
+                    <div
+                      key={form.id}
+                      className="group flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 hover:border-slate-200 dark:hover:border-slate-700 transition-all shadow-sm hover:shadow-md"
+                    >
+                      {/* Left side info */}
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-mono text-xs font-bold border border-blue-100/50 dark:border-blue-900/30">
+                          #{form.id}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-tight">
+                              {form.form_label}
+                            </h3>
                             <StatusBadge status={form.status} />
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell text-xs text-slate-500">
-                            {new Date(form.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
-                          </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-slate-700">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-52">
-                                <DropdownMenuItem onClick={() => setSelectedForm(form)}>
-                                  <FileText className="mr-2 h-3.5 w-3.5" />Lihat Detail
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handlePreviewPdf(form)} disabled={isPdfLoading === form.slug}>
-                                  {isPdfLoading === form.slug ? (
-                                    <LoaderIcon className="mr-2 h-3.5 w-3.5 animate-spin text-blue-500" />
-                                  ) : (
-                                    <FileText className="mr-2 h-3.5 w-3.5 text-blue-500" />
-                                  )}
-                                  <span className="font-semibold text-blue-600 dark:text-blue-400">Preview PDF</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push(`/form/${form.slug}`)}>
-                                  <ExternalLink className="mr-2 h-3.5 w-3.5" />Buka Form
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => copyLink(form.link)}>
-                                  <Copy className="mr-2 h-3.5 w-3.5" />Salin Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push(`/filemanager/${form.slug}`)}>
-                                  <Folder className="mr-2 h-3.5 w-3.5" />Dokumen
-                                </DropdownMenuItem>
-                                {isAdmin && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuLabel className="text-xs text-slate-400 font-normal">Ubah Status</DropdownMenuLabel>
-                                    {["draft", "submitted", "proses", "review", "selesai"]
-                                      .filter((s) => s !== form.status?.toLowerCase())
-                                      .map((s) => (
-                                        <DropdownMenuItem key={s} onClick={() => handleChangeStatus(form.slug, s)}>
-                                          <StatusBadge status={s} />
-                                        </DropdownMenuItem>
-                                      ))}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-red-600 focus:text-red-600"
-                                      onClick={() => setDeleteConfirm(form)}
-                                    >
-                                      <Trash2 className="mr-2 h-3.5 w-3.5" />Hapus Formulir
-                                    </DropdownMenuItem>
-                                  </>
+                          </div>
+                          
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+                            {isAdmin && (
+                              <div className="flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="font-medium text-slate-700 dark:text-slate-300">{form.assigned_wa}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                              <span>
+                                {new Date(form.created_at).toLocaleDateString("id-ID", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right side actions */}
+                      <div className="flex items-center justify-between md:justify-end gap-2 border-t md:border-t-0 border-slate-100 dark:border-slate-800 pt-3 md:pt-0">
+                        {/* Mobile preview shortcut */}
+                        <div className="md:hidden">
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                            ID: {form.slug.substring(0, 8)}...
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 text-xs font-semibold"
+                            onClick={() => setSelectedForm(form)}
+                          >
+                            Lihat Detail
+                          </Button>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 rounded-lg">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <DropdownMenuItem onClick={() => setSelectedForm(form)}>
+                                <FileText className="mr-2 h-3.5 w-3.5" />Lihat Detail
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handlePreviewPdf(form)} disabled={isPdfLoading === form.slug}>
+                                {isPdfLoading === form.slug ? (
+                                  <LoaderIcon className="mr-2 h-3.5 w-3.5 animate-spin text-blue-500" />
+                                ) : (
+                                  <FileText className="mr-2 h-3.5 w-3.5 text-blue-500" />
                                 )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                                <span className="font-semibold text-blue-600 dark:text-blue-400">Preview PDF</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/form/${form.slug}`)}>
+                                <ExternalLink className="mr-2 h-3.5 w-3.5" />Buka Form
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => copyLink(form.link)}>
+                                <Copy className="mr-2 h-3.5 w-3.5" />Salin Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/filemanager/${form.slug}`)}>
+                                <Folder className="mr-2 h-3.5 w-3.5" />Dokumen
+                              </DropdownMenuItem>
+                              {isAdmin && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuLabel className="text-xs text-slate-400 font-normal">Ubah Status</DropdownMenuLabel>
+                                  {["draft", "submitted", "proses", "review", "selesai"]
+                                    .filter((s) => s !== form.status?.toLowerCase())
+                                    .map((s) => (
+                                      <DropdownMenuItem key={s} onClick={() => handleChangeStatus(form.slug, s)}>
+                                        <StatusBadge status={s} />
+                                      </DropdownMenuItem>
+                                    ))}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600 focus:text-red-600"
+                                    onClick={() => setDeleteConfirm(form)}
+                                  >
+                                    <Trash2 className="mr-2 h-3.5 w-3.5" />Hapus Formulir
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
 
             {totalPages > 1 && (
