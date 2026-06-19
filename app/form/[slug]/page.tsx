@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, use, useRef } from "react";
 import { 
   CheckCircle2, 
   Upload, 
@@ -12,9 +12,11 @@ import {
   Phone, 
   ChevronRight,
   ArrowLeft,
-  Info
+  Info,
+  Camera
 } from "lucide-react";
 import Link from "next/link";
+import Tesseract from "tesseract.js";
 
 const API_BASE = "/api/php";
 
@@ -68,6 +70,181 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [activeSection, setActiveSection] = useState(0);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
+
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [ocrError, setOcrError] = useState("");
+  const ocrInputRef = useRef<HTMLInputElement>(null);
+
+  // ── KTP OCR Parser Helper ──────────────────────────────────────────────────
+  const parseKtpText = (text: string) => {
+    const lines = text.split("\n").map((line) => line.trim());
+    
+    let nik = "";
+    let nama = "";
+    let tempatTglLahir = "";
+    let jenisKelamin = "";
+    let alamat = "";
+    let rtrw = "";
+    let kelDesa = "";
+    let kecamatan = "";
+
+    // Extract NIK: match 15 to 17 characters that can be digits, I, l, |, o, O, etc.
+    const rawNikMatch = text.match(/(?:NIK|N1K|NlK)\D*([0-9Il|oO\s\-\/]{15,18})/i);
+    if (rawNikMatch) {
+      const rawNik = rawNikMatch[1];
+      nik = rawNik
+        .replace(/[Il|]/g, "1")
+        .replace(/[oO]/g, "0")
+        .replace(/[^0-9]/g, ""); // strip anything else
+    } else {
+      // Fallback: search for any sequence that could be a NIK
+      const genericMatch = text.match(/\b\d{16}\b/);
+      if (genericMatch) {
+        nik = genericMatch[0];
+      }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Nama
+      if (/(?:Nama|Narna|Neme)\b/i.test(line)) {
+        const match = line.match(/(?:Nama|Narna|Neme)\s*[:;.-]*\s*(.+)/i);
+        if (match) nama = match[1].trim();
+      }
+
+      // Tempat/Tgl Lahir
+      if (/(?:Tempat|Tgl|Lahir|Tempa)\b/i.test(line)) {
+        const match = line.match(/(?:Tempat|Tgl|Lahir|Tempa)\s*[:;.-]*\s*(.+)/i);
+        if (match) tempatTglLahir = match[1].trim();
+      }
+
+      // Jenis Kelamin
+      if (/(?:Jenis|Kelamin|Kelemin)\b/i.test(line)) {
+        if (/LAKI/i.test(line)) jenisKelamin = "Laki-laki";
+        else if (/PEREMPUAN/i.test(line)) jenisKelamin = "Perempuan";
+      }
+
+      // Alamat
+      if (/Alamat/i.test(line)) {
+        const match = line.match(/Alamat\s*[:;.-]*\s*(.+)/i);
+        if (match) {
+          alamat = match[1].trim();
+          // Append next line if it is short and doesn't contain field labels
+          if (i + 1 < lines.length && lines[i + 1].length > 2 && !/RT|RW|Kel|Desa|Kec|Agama|Pekerjaan|Status/i.test(lines[i + 1])) {
+            alamat += " " + lines[i + 1].trim();
+          }
+        }
+      }
+
+      // RT/RW
+      if (/RT\D*RW/i.test(line)) {
+        const match = line.match(/RT\D*RW\s*[:;.-]*\s*([^\s]+)/i);
+        if (match) rtrw = match[1].trim();
+      }
+
+      // Kel/Desa
+      if (/Kel|Desa/i.test(line)) {
+        const match = line.match(/(?:Kel|Desa|Keld)\s*[:;.-]*\s*(.+)/i);
+        if (match) kelDesa = match[1].trim();
+      }
+
+      // Kecamatan
+      if (/Kecamatan/i.test(line)) {
+        const match = line.match(/Kecamatan\s*[:;.-]*\s*(.+)/i);
+        if (match) kecamatan = match[1].trim();
+      }
+    }
+
+    // Gender fallback search
+    if (!jenisKelamin) {
+      if (/LAKI-LAKI|LAKI/i.test(text)) jenisKelamin = "Laki-laki";
+      else if (/PEREMPUAN/i.test(text)) jenisKelamin = "Perempuan";
+    }
+
+    // Clean up fields from common typos or prefixes
+    nama = nama.replace(/^[:;.-]\s*/, "").trim();
+    tempatTglLahir = tempatTglLahir.replace(/^[:;.-]\s*/, "").trim();
+    
+    // Format full address
+    let fullAddress = alamat.replace(/^[:;.-]\s*/, "").trim();
+    if (rtrw) fullAddress += ` RT/RW ${rtrw}`;
+    if (kelDesa) {
+      const cleanKel = kelDesa.replace(/^[:;.-]\s*/, "").trim();
+      fullAddress += `, Kel. ${cleanKel}`;
+    }
+    if (kecamatan) {
+      const cleanKec = kecamatan.replace(/^[:;.-]\s*/, "").trim();
+      fullAddress += `, Kec. ${cleanKec}`;
+    }
+
+    // ── Sanitize strings from weird characters ─────────────────────────────────
+    // Nama: letters, spaces, dots, single quotes, commas, hyphens only
+    nama = nama.replace(/[^A-Za-z\s.'’,\-]/g, "").replace(/\s+/g, " ").trim();
+
+    // Tempat/Tanggal Lahir: letters, numbers, spaces, dots, commas, hyphens, slashes only
+    tempatTglLahir = tempatTglLahir.replace(/[^A-Za-z0-9\s.,\-\/]/g, "").replace(/\s+/g, " ").trim();
+
+    // Alamat KTP: letters, numbers, spaces, dots, commas, hyphens, slashes, colons, parentheses only
+    fullAddress = fullAddress.replace(/[^A-Za-z0-9\s.,\-\/:()]/g, "").replace(/\s+/g, " ").trim();
+
+    return {
+      nik: nik.trim(),
+      nama_lengkap: nama,
+      tempat_tgl_lahir: tempatTglLahir,
+      jenis_kelamin: jenisKelamin,
+      alamat_ktp: fullAddress
+    };
+  };
+
+  const handleScanKTPClick = () => {
+    setOcrError("");
+    ocrInputRef.current?.click();
+  };
+
+  const handleOcrFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsOcrLoading(true);
+    setOcrError("");
+    try {
+      const result = await Tesseract.recognize(file, "ind+eng", {
+        logger: (m) => console.log(`[OCR] progress:`, m),
+      });
+
+      const parsed = parseKtpText(result.data.text);
+      
+      setValues((prev) => {
+        const next = { ...prev };
+        if (parsed.nik) next["nik"] = parsed.nik;
+        if (parsed.nama_lengkap) next["nama_lengkap"] = parsed.nama_lengkap;
+        if (parsed.tempat_tgl_lahir) next["tempat_tgl_lahir"] = parsed.tempat_tgl_lahir;
+        if (parsed.jenis_kelamin) next["jenis_kelamin"] = parsed.jenis_kelamin;
+        if (parsed.alamat_ktp) next["alamat_ktp"] = parsed.alamat_ktp;
+        
+        saveDraft(next, fileUrls);
+        return next;
+      });
+      
+      setStepErrors((prev) => {
+        const copy = { ...prev };
+        if (parsed.nik) delete copy["nik"];
+        if (parsed.nama_lengkap) delete copy["nama_lengkap"];
+        if (parsed.tempat_tgl_lahir) delete copy["tempat_tgl_lahir"];
+        if (parsed.jenis_kelamin) delete copy["jenis_kelamin"];
+        if (parsed.alamat_ktp) delete copy["alamat_ktp"];
+        return copy;
+      });
+
+    } catch (err) {
+      console.error("OCR Error:", err);
+      setOcrError("Gagal membaca KTP. Pastikan foto KTP terlihat jelas dan coba lagi.");
+    } finally {
+      setIsOcrLoading(false);
+      if (ocrInputRef.current) ocrInputRef.current.value = "";
+    }
+  };
 
   // ── Load form data ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -386,6 +563,36 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
   // ─── Form UI ──────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+      <input
+        type="file"
+        ref={ocrInputRef}
+        accept="image/*"
+        onChange={handleOcrFileChange}
+        className="hidden"
+      />
+
+      {/* OCR Loading Overlay */}
+      {isOcrLoading && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full text-center space-y-4 border border-slate-100 dark:border-slate-800 shadow-xl relative overflow-hidden">
+            {/* Scanning animation bar */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500 animate-pulse" />
+            
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-950/40 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+              <Camera className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white">Membaca KTP Anda</h3>
+            <p className="text-xs text-slate-450 dark:text-slate-500 leading-relaxed">
+              Sedang mengekstrak data NIK, Nama, dan Alamat dari foto KTP secara lokal di browser Anda. Harap tunggu...
+            </p>
+            
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden relative">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full absolute top-0 left-0 animate-pulse" style={{ width: "100%" }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/80 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -540,6 +747,14 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
           </div>
         )}
 
+        {/* OCR Error Banner */}
+        {ocrError && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/10 border border-red-100 dark:border-red-900/30 rounded-2xl text-sm text-red-600 dark:text-red-400 flex items-start gap-2.5">
+            <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+            <div className="font-medium">{ocrError}</div>
+          </div>
+        )}
+
         {/* Admin/User note if present */}
         {form?.note && activeSection === 0 && (
           <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/10 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl text-xs text-amber-800 dark:text-amber-400 flex gap-2.5 items-start">
@@ -556,15 +771,28 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
           <div className="space-y-6">
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm overflow-hidden transition-all duration-300">
               {/* Section Header */}
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
-                <h2 className="font-bold text-slate-800 dark:text-white text-base leading-tight">
-                  {sections[activeSection].title}
-                </h2>
-                {sections[activeSection].note && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    {sections[activeSection].note}
-                  </p>
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30 flex justify-between items-center gap-4">
+                <div>
+                  <h2 className="font-bold text-slate-800 dark:text-white text-base leading-tight">
+                    {sections[activeSection].title}
+                  </h2>
+                  {sections[activeSection].note && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      {sections[activeSection].note}
+                    </p>
+                  )}
+                </div>
+                {/* Scan KTP button */}
+                {sections[activeSection].id === "data_pribadi" && (
+                  <button
+                    onClick={handleScanKTPClick}
+                    type="button"
+                    className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-semibold rounded-xl border border-blue-200/50 dark:border-blue-800/30 transition-all shadow-sm active:scale-95"
+                  >
+                    <Camera className="w-4 h-4 text-blue-500" />
+                    Scan KTP
+                  </button>
                 )}
               </div>
 
