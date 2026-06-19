@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ArrowLeft,
   Info,
-  Camera
+  Camera,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import Tesseract from "tesseract.js";
@@ -596,13 +597,13 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/80 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-xs">D</span>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.location.href = "https://dokasah.web.id"}>
+            <div className="size-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md text-xs font-bold">
+              D
             </div>
-            <div>
-              <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">Dokasah</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">Pengisian Formulir Publik</p>
+            <div className="flex flex-col">
+              <span className="font-bold text-slate-800 dark:text-white text-sm leading-none">Dokasah</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5 leading-none">Formulir Publik</span>
             </div>
           </div>
           
@@ -635,9 +636,15 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
         <div className="mb-8 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden border border-slate-800">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl"></div>
           <div className="relative z-10 space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold uppercase tracking-wider border border-blue-500/20">
-              <FileText className="w-3.5 h-3.5" />
-              Layanan Legalitas Resmi
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-[10px] font-semibold uppercase tracking-wider border border-blue-500/20">
+                <FileText className="w-3.5 h-3.5" />
+                Layanan Legalitas Resmi
+              </div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold uppercase tracking-wider border border-emerald-500/20">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Data Anda 100% Aman
+              </div>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{form?.form_label}</h1>
             {form?.form_description && (
@@ -877,7 +884,12 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
       {/* ── Sticky Navigation Bottom Bar ───────────────────────────────────────── */}
       {!isSubmitted && (
         <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/60 dark:border-slate-800/80 shadow-lg z-10 transition-colors duration-300">
-          <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="max-w-2xl mx-auto px-4 py-3 flex flex-col gap-2">
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-450 font-medium">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Data Anda 100% aman & terenkripsi</span>
+            </div>
+            <div className="flex items-center gap-3">
             {activeSection > 0 && (
               <button
                 onClick={() => {
@@ -926,11 +938,12 @@ export default function FormPage({ params }: { params: Promise<{ slug: string }>
               </button>
             )}
           </div>
-          <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 pb-2">
-            Perubahan Anda otomatis disimpan sebagai draf
-          </p>
         </div>
-      )}
+        <p className="text-center text-[10px] text-slate-400 dark:text-slate-500 pb-2">
+          Perubahan Anda otomatis disimpan sebagai draf
+        </p>
+      </div>
+    )}
     </div>
   );
 }

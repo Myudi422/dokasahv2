@@ -72,16 +72,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-slate-900 border-r border-slate-800 text-slate-300 shadow-xl overflow-hidden z-20">
         {/* Logo Section */}
         <div 
-          className="p-6 flex items-center gap-3 border-b border-slate-800 cursor-pointer group"
+          className="p-6 flex items-center gap-2 border-b border-slate-800 cursor-pointer group font-bold text-xl text-white"
           onClick={() => (window.location.href = "https://dokasah.web.id")}
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
-            <span className="text-white font-black text-base tracking-wider">D</span>
+          <div className="size-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
+            D
           </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-white text-base tracking-tight leading-none">Dokasah</span>
-            <span className="text-[10px] text-slate-500 mt-0.5 tracking-wider uppercase font-semibold">Management</span>
-          </div>
+          <span>Dokasah</span>
         </div>
 
         {/* Navigation Section */}
@@ -151,14 +148,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 p-0 bg-slate-900 border-slate-800 text-slate-300 flex flex-col h-full">
                   <SheetHeader className="p-6 border-b border-slate-800 text-left">
-                    <SheetTitle className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                        <span className="text-white font-black text-base">D</span>
+                    <SheetTitle className="flex items-center gap-2 font-bold text-xl text-white">
+                      <div className="size-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white">
+                        D
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-white text-base leading-none">Dokasah</span>
-                        <span className="text-[10px] text-slate-500 mt-0.5 tracking-wider uppercase font-semibold">Management</span>
-                      </div>
+                      <span>Dokasah</span>
                     </SheetTitle>
                   </SheetHeader>
 

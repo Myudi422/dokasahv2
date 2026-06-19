@@ -7,7 +7,7 @@ import {
   LayoutDashboard, FileText, Folder, LogOut, Menu, MoreHorizontal,
   FileArchive, LoaderIcon, Users, ChevronUp, ChevronDown, Plus,
   CheckCircle2, Clock, AlertCircle, TrendingUp, Copy, ExternalLink,
-  NotepadText, Trash2, RefreshCw, Calendar, Filter, Search,
+  NotepadText, Trash2, RefreshCw, Calendar, Filter, Search, MessageCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -784,6 +784,15 @@ export default function DashboardPage() {
                               <div className="flex items-center gap-1.5">
                                 <Users className="w-3.5 h-3.5 text-slate-400" />
                                 <span className="font-medium text-slate-700 dark:text-slate-300">{form.assigned_wa}</span>
+                                <a
+                                  href={`https://wa.me/${form.assigned_wa.replace(/\D/g, "").replace(/^0/, "62")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-100 transition-colors"
+                                  title="Hubungi Klien via WhatsApp"
+                                >
+                                  <MessageCircle className="w-3 w-3 fill-emerald-600/10" />
+                                </a>
                               </div>
                             )}
                             <div className="flex items-center gap-1.5">
