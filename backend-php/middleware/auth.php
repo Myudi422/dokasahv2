@@ -14,7 +14,7 @@ function requireAuth(): array {
         $authHeader = $headers['Authorization'] ?? '';
     }
 
-    if (!str_starts_with($authHeader, 'Bearer ')) {
+    if (strpos($authHeader, 'Bearer ') !== 0) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Token tidak ditemukan. Silakan login.']);
         exit();
@@ -55,7 +55,7 @@ function optionalAuth(): ?array {
         $authHeader = $headers['Authorization'] ?? '';
     }
 
-    if (!str_starts_with($authHeader, 'Bearer ')) return null;
+    if (strpos($authHeader, 'Bearer ') !== 0) return null;
 
     $token = substr($authHeader, 7);
     return jwtDecode($token);

@@ -22,5 +22,13 @@ echo json_encode([
         'dashboard'     => '/api/dashboard/stats.php',
         'upload'        => '/api/upload/index.php',
         'setup'         => '/setup-admin.php',
+        'sm_accounts'   => '/api/social-media/accounts.php',
+        'sm_posts'      => '/api/social-media/posts.php',
+        'sm_calendar'   => '/api/social-media/calendar.php',
+        'sm_post_detail'=> '/api/social-media/post-detail.php',
+        'sm_media_upload'  => '/api/social-media/media-upload.php',
+        'sm_media_delete'  => '/api/social-media/media-delete.php',
+        'sm_oauth_url'     => '/api/social-media/oauth-url.php',
+        'sm_oauth_callback'=> '/api/social-media/oauth-callback.php',
     ]
 ]);

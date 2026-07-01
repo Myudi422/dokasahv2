@@ -14,7 +14,9 @@ import {
   User,
   Settings,
   Bell,
-  HelpCircle
+  HelpCircle,
+  CalendarDays,
+  Share2
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -57,6 +59,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const menuItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { href: "/dashboard/content-planner", icon: CalendarDays, label: "Content Planner" },
+    { href: "/dashboard/social-accounts", icon: Share2, label: "Akun Sosmed" },
     { href: "/filemanager", icon: Folder, label: "File Manager" },
     ...(user?.role === "admin"
       ? [
@@ -84,7 +88,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Navigation Section */}
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            const isActive = item.href === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <NavItem
                 key={item.href}
@@ -159,7 +165,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {/* Navigation in Mobile */}
                   <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                     {menuItems.map((item) => {
-                      const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                      const isActive = item.href === "/dashboard"
+                        ? pathname === "/dashboard"
+                        : pathname === item.href || pathname.startsWith(item.href + "/");
                       return (
                         <NavItem
                           key={item.href}
@@ -199,9 +207,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="hidden lg:flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
               <span className="hover:text-slate-800 dark:hover:text-slate-100 transition-colors cursor-pointer">Sistem</span>
               <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              <span className="text-slate-800 dark:text-slate-100 font-semibold capitalize">
+              <span className="text-slate-850 dark:text-slate-200 font-semibold capitalize">
                 {pathname.split("/")[1] || "dashboard"}
               </span>
+              {pathname.split("/")[2] && (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                  <span className="text-slate-800 dark:text-slate-100 font-semibold capitalize">
+                    {pathname.split("/")[2].replace("-", " ")}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
